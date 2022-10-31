@@ -177,6 +177,13 @@ public class DataSyncServiceUtil {
 	private String podUrl;
 
 	/**
+	 * Reference for ${pop.url} from property file
+	 */
+	@Value("${pop.url}")
+	private String popUrl;
+
+
+	/**
 	 * Reference for ${booking.resource.url} from property file
 	 */
 	@Value("${booking.resource.url}")
