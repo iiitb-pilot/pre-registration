@@ -24,4 +24,7 @@ public class DocumentIdentity {
 	/** Proof of Photo. */
 	private IdentityJsonValues pop;
 
+	/** Proof of Consent. */
+	private IdentityJsonValues poc;
+
 }
