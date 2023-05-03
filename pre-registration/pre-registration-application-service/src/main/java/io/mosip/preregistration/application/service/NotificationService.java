@@ -177,14 +177,14 @@ public class NotificationService {
 			NotificationDTO notificationDto = notificationReqDTO.getRequest();
 			if (validationUtil.requestValidator(validationUtil.prepareRequestMap(notificationReqDTO),
 					requiredRequestMap)) {
-			MainResponseDTO<DemographicResponseDTO> demoDetail = notificationDtoValidation(notificationDto);
+				MainResponseDTO<DemographicResponseDTO> demoDetail = notificationDtoValidation(notificationDto);
 				if (notificationDto.isAdditionalRecipient()) {
 					log.info("sessionId", "idType", "id",
 							"In notification service of sendNotification if additionalRecipient is"
 									+ notificationDto.isAdditionalRecipient());
 					if (notificationDto.getMobNum() != null && !notificationDto.getMobNum().isEmpty()) {
 						if (validationUtil.phoneValidator(notificationDto.getMobNum())) {
-							notificationUtil.notify(NotificationRequestCodes.SMS.getCode(), notificationDto,file);
+							notificationUtil.notify(NotificationRequestCodes.SMS.getCode(), notificationDto, file);
 						} else {
 							throw new MandatoryFieldException(NotificationErrorCodes.PRG_PAM_ACK_007.getCode(),
 									NotificationErrorMessages.PHONE_VALIDATION_EXCEPTION.getMessage(), response);
@@ -330,8 +330,7 @@ public class NotificationService {
 	public MainResponseDTO<DemographicResponseDTO> notificationDtoValidation(NotificationDTO dto)
 			throws IOException, ParseException {
 		MainResponseDTO<DemographicResponseDTO> demoDetail = getDemographicDetails(dto);
-		if (!(dto.getIsPreBookingNotification().equals("true"))) {
-			if (!dto.getIsBatch()) {
+		if (!dto.getIsBatch()) {
 			BookingRegistrationDTO bookingDTO = getAppointmentDetailsRestService(dto.getPreRegistrationId());
 			String registrationCenterId = bookingDTO.getRegistrationCenterId();
 			String time = LocalTime.parse(bookingDTO.getSlotFromTime(), DateTimeFormatter.ofPattern("HH:mm"))
@@ -364,7 +363,6 @@ public class NotificationService {
 			}
 			dto = serviceUtil.modifyCenterNameAndAddress(dto, registrationCenterId, dto.getLanguageCode().split(",")[0]);
 		}
-	}
 		return demoDetail;
 	}
 

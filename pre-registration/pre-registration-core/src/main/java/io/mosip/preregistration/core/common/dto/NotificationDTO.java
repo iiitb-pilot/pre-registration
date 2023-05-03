@@ -3,8 +3,6 @@ package io.mosip.preregistration.core.common.dto;
 import java.io.Serializable;
 import java.util.List;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -51,10 +49,7 @@ public class NotificationDTO implements Serializable {
 	 * additionalRecipient for notififcation
 	 */
 	private boolean additionalRecipient;
-	/**
-	 *  flag for preBooking Notififcation
-	 */
-	private String isPreBookingNotification;
+	
 	/**
 	 * batch config field
 	 */
