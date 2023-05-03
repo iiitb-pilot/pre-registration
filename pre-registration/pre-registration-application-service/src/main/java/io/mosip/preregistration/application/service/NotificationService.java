@@ -365,7 +365,7 @@ public class NotificationService {
 			dto = serviceUtil.modifyCenterNameAndAddress(dto, registrationCenterId, dto.getLanguageCode().split(",")[0]);
 		}
 	}
-		return demoDetail;
+	return demoDetail;
 	}
 
 	/**

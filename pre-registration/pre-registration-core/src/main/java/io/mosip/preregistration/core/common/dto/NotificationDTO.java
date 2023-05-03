@@ -52,7 +52,7 @@ public class NotificationDTO implements Serializable {
 	 */
 	private boolean additionalRecipient;
 	/**
-	 *  flag for preBooking Notififcation
+	 * flag for preBooking Notififcation
 	 */
 	private String isPreBookingNotification;
 	/**

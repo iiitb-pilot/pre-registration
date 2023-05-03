@@ -135,8 +135,7 @@ public class NotificationUtil {
 					fileText = templateUtil.getTemplate(keyValuePair.getKey(), emailAcknowledgement);
 //				fileText.concat(System.lineSeparator() + System.lineSeparator());
 				}
-			}
-			else {
+			} else {
 				fileText = templateUtil.getTemplate(keyValuePair.getKey(), emailPreBookingAcknowledgement);
 			}
 
@@ -255,9 +254,8 @@ public class NotificationUtil {
 							templateUtil.getTemplate(keyValuePair.getKey(), smsAcknowledgement), acknowledgementDTO,
 							(String) keyValuePair.getKey());
 				}
-			}
-			else {
-				languageWiseTemplate=templateUtil.templateMerge(
+			} else {
+				languageWiseTemplate = templateUtil.templateMerge(
 						templateUtil.getTemplate(keyValuePair.getKey(), smsPreBookingAcknowledgement),
 						acknowledgementDTO, (String) keyValuePair.getKey());
 			}
