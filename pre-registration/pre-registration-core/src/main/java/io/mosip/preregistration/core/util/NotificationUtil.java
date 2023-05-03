@@ -51,15 +51,24 @@ public class NotificationUtil {
 
 	@Value("${email.acknowledgement.template}")
 	private String emailAcknowledgement;
+	
+	@Value("${email.prebooking.acknowledgement.template}")
+	private String emailPreBookingAcknowledgement;
 
 	@Value("${email.acknowledgement.subject.template}")
 	private String emailAcknowledgementSubject;
+	
+	@Value("${email.prebooking.acknowledgement.subject.template}")
+	private String emailPreBookingAcknowledgementSubject;
 
 	@Value("${cancel.appointment.email.subject}")
 	private String cancelAppointmentEmailSubject;
 
 	@Value("${sms.acknowledgement.template}")
 	private String smsAcknowledgement;
+	
+	@Value("${email.prebooking.acknowledgement.template}")
+	private String smsPreBookingAcknowledgement;
 
 	@Value("${cancel.appoinment.template}")
 	private String cancelAppoinment;
@@ -118,12 +127,17 @@ public class NotificationUtil {
 		MainResponseDTO<NotificationResponseDTO> response = new MainResponseDTO<>();
 		String mergeTemplate = null;
 		for (KeyValuePairDto keyValuePair : acknowledgementDTO.getFullName()) {
-			if (acknowledgementDTO.getIsBatch()) {
-				fileText = templateUtil.getTemplate(keyValuePair.getKey(), cancelAppoinment);
+			if (!acknowledgementDTO.getIsPreBookingNotification().equals("true")) {
+				if (acknowledgementDTO.getIsBatch()) {
+					fileText = templateUtil.getTemplate(keyValuePair.getKey(), cancelAppoinment);
 //				fileText.concat(System.lineSeparator() + System.lineSeparator());
-			} else {
-				fileText = templateUtil.getTemplate(keyValuePair.getKey(), emailAcknowledgement);
+				} else {
+					fileText = templateUtil.getTemplate(keyValuePair.getKey(), emailAcknowledgement);
 //				fileText.concat(System.lineSeparator() + System.lineSeparator());
+				}
+			}
+			else {
+				fileText = templateUtil.getTemplate(keyValuePair.getKey(), emailPreBookingAcknowledgement);
 			}
 
 			String languageWiseTemplate = templateUtil.templateMerge(fileText, acknowledgementDTO,
@@ -140,8 +154,12 @@ public class NotificationUtil {
 		MultiValueMap<Object, Object> emailMap = new LinkedMultiValueMap<>();
 		emailMap.add("attachments", doc);
 		emailMap.add("mailContent", mergeTemplate);
-		if (acknowledgementDTO.getIsBatch() && cancelAppointmentEmailSubject != null) {
-			emailMap.add("mailSubject", getCancelAppointmentEmailSubject(acknowledgementDTO));
+		if (!acknowledgementDTO.getIsPreBookingNotification().equals("true")) {
+			if (acknowledgementDTO.getIsBatch() && cancelAppointmentEmailSubject != null) {
+				emailMap.add("mailSubject", getCancelAppointmentEmailSubject(acknowledgementDTO));
+			} else {
+				emailMap.add("mailSubject", getEmailSubject(acknowledgementDTO));
+			}	
 		} else {
 			emailMap.add("mailSubject", getEmailSubject(acknowledgementDTO));
 		}
@@ -179,7 +197,7 @@ public class NotificationUtil {
 		int noOfLang = acknowledgementDTO.getFullName().size();
 		for (KeyValuePairDto keyValuePair : acknowledgementDTO.getFullName()) {
 			emailSubject = emailSubject + templateUtil.templateMerge(
-					templateUtil.getTemplate(keyValuePair.getKey(), emailAcknowledgementSubject), acknowledgementDTO,
+					templateUtil.getTemplate(keyValuePair.getKey(), emailPreBookingAcknowledgementSubject), acknowledgementDTO,
 					(String) keyValuePair.getKey());
 			if (noOfLang > 1) {
 				noOfLang--;
@@ -227,14 +245,21 @@ public class NotificationUtil {
 		String mergeTemplate = null;
 		for (KeyValuePairDto keyValuePair : acknowledgementDTO.getFullName()) {
 			String languageWiseTemplate = null;
-			if (acknowledgementDTO.getIsBatch()) {
-				languageWiseTemplate = templateUtil.templateMerge(
-						templateUtil.getTemplate(keyValuePair.getKey(), cancelAppoinment), acknowledgementDTO,
-						(String) keyValuePair.getKey());
-			} else {
-				languageWiseTemplate = templateUtil.templateMerge(
-						templateUtil.getTemplate(keyValuePair.getKey(), smsAcknowledgement), acknowledgementDTO,
-						(String) keyValuePair.getKey());
+			if (!acknowledgementDTO.getIsPreBookingNotification().equals("true")) {
+				if (acknowledgementDTO.getIsBatch()) {
+					languageWiseTemplate = templateUtil.templateMerge(
+							templateUtil.getTemplate(keyValuePair.getKey(), cancelAppoinment), acknowledgementDTO,
+							(String) keyValuePair.getKey());
+				} else {
+					languageWiseTemplate = templateUtil.templateMerge(
+							templateUtil.getTemplate(keyValuePair.getKey(), smsAcknowledgement), acknowledgementDTO,
+							(String) keyValuePair.getKey());
+				}
+			}
+			else {
+				languageWiseTemplate=templateUtil.templateMerge(
+						templateUtil.getTemplate(keyValuePair.getKey(), smsPreBookingAcknowledgement),
+						acknowledgementDTO, (String) keyValuePair.getKey());
 			}
 			if (mergeTemplate == null) {
 				mergeTemplate = languageWiseTemplate;
