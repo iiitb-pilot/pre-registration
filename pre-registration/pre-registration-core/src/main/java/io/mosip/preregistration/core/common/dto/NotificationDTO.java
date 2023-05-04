@@ -49,7 +49,10 @@ public class NotificationDTO implements Serializable {
 	 * additionalRecipient for notififcation
 	 */
 	private boolean additionalRecipient;
-	
+	/**
+	 * flag to check pre booking notification
+	 */
+	private String isPreBookingNotification;
 	/**
 	 * batch config field
 	 */
