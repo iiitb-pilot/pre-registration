@@ -330,7 +330,6 @@ public class NotificationService {
 	public MainResponseDTO<DemographicResponseDTO> notificationDtoValidation(NotificationDTO dto)
 			throws IOException, ParseException {
 		MainResponseDTO<DemographicResponseDTO> demoDetail = getDemographicDetails(dto);
-		if ((!dto.getIsPreBookingNotification().equals("true"))) {
 		if (!dto.getIsBatch()) {
 			BookingRegistrationDTO bookingDTO = getAppointmentDetailsRestService(dto.getPreRegistrationId());
 			String registrationCenterId = bookingDTO.getRegistrationCenterId();
@@ -364,7 +363,6 @@ public class NotificationService {
 			}
 			dto = serviceUtil.modifyCenterNameAndAddress(dto, registrationCenterId, dto.getLanguageCode().split(",")[0]);
 		}
-	}
 		return demoDetail;
 	}
 
