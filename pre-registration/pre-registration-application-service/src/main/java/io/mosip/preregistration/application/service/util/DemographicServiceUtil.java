@@ -40,20 +40,27 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.fasterxml.jackson.module.afterburner.AfterburnerModule;
 
+import io.mosip.kernel.core.authmanager.authadapter.model.AuthUserDetails;
 import io.mosip.kernel.core.http.ResponseWrapper;
 import io.mosip.kernel.core.logger.spi.Logger;
 import io.mosip.kernel.core.util.DateUtils;
 import io.mosip.preregistration.application.code.DemographicRequestCodes;
+import io.mosip.preregistration.application.code.NotificationRequestCodes;
 import io.mosip.preregistration.application.dto.ApplicantTypeKeyValueDTO;
 import io.mosip.preregistration.application.dto.ApplicantTypeRequestDTO;
 import io.mosip.preregistration.application.dto.ApplicantTypeResponseDTO;
@@ -69,22 +76,35 @@ import io.mosip.preregistration.application.errorcodes.ApplicationErrorCodes;
 import io.mosip.preregistration.application.errorcodes.ApplicationErrorMessages;
 import io.mosip.preregistration.application.errorcodes.DemographicErrorCodes;
 import io.mosip.preregistration.application.errorcodes.DemographicErrorMessages;
+import io.mosip.preregistration.application.errorcodes.NotificationErrorCodes;
+import io.mosip.preregistration.application.errorcodes.NotificationErrorMessages;
 import io.mosip.preregistration.application.exception.MasterDataException;
 import io.mosip.preregistration.application.exception.OperationNotAllowedException;
 import io.mosip.preregistration.application.exception.RecordFailedToUpdateException;
 import io.mosip.preregistration.application.exception.RecordNotFoundException;
+import io.mosip.preregistration.application.exception.util.NotificationExceptionCatcher;
 import io.mosip.preregistration.application.repository.ApplicationRepostiory;
 import io.mosip.preregistration.application.service.AppointmentService;
 import io.mosip.preregistration.application.service.UISpecService;
 import io.mosip.preregistration.booking.dto.RegistrationCenterResponseDto;
 import io.mosip.preregistration.core.code.ApplicationStatusCode;
+import io.mosip.preregistration.core.code.AuditLogVariables;
 import io.mosip.preregistration.core.code.BookingTypeCodes;
+import io.mosip.preregistration.core.code.EventId;
+import io.mosip.preregistration.core.code.EventName;
+import io.mosip.preregistration.core.code.EventType;
+import io.mosip.preregistration.core.code.RequestCodes;
 import io.mosip.preregistration.core.code.StatusCodes;
+import io.mosip.preregistration.core.common.dto.AuditRequestDto;
 import io.mosip.preregistration.core.common.dto.DeleteBookingDTO;
 import io.mosip.preregistration.core.common.dto.DemographicResponseDTO;
+import io.mosip.preregistration.core.common.dto.KeyValuePairDto;
 import io.mosip.preregistration.core.common.dto.MainRequestDTO;
 import io.mosip.preregistration.core.common.dto.MainResponseDTO;
+import io.mosip.preregistration.core.common.dto.NotificationDTO;
+import io.mosip.preregistration.core.common.dto.NotificationResponseDTO;
 import io.mosip.preregistration.core.common.dto.RequestWrapper;
+import io.mosip.preregistration.core.common.dto.SMSRequestDTO;
 import io.mosip.preregistration.core.common.entity.ApplicationEntity;
 import io.mosip.preregistration.core.common.entity.DemographicEntity;
 import io.mosip.preregistration.core.config.LoggerConfiguration;
@@ -92,12 +112,13 @@ import io.mosip.preregistration.core.exception.DatabaseOperationException;
 import io.mosip.preregistration.core.exception.EncryptionFailedException;
 import io.mosip.preregistration.core.exception.RecordFailedToDeleteException;
 import io.mosip.preregistration.core.exception.RestCallException;
+import io.mosip.preregistration.core.util.AuditLogUtil;
 import io.mosip.preregistration.core.util.CryptoUtil;
 import io.mosip.preregistration.core.util.HashUtill;
+import io.mosip.preregistration.core.util.TemplateUtil;
 import io.mosip.preregistration.core.util.ValidationUtil;
 import io.mosip.preregistration.demographic.exception.system.DateParseException;
 import io.mosip.preregistration.demographic.exception.system.JsonParseException;
-import io.mosip.preregistration.demographic.exception.system.SystemFileIOException;
 import io.mosip.preregistration.demographic.exception.system.SystemIllegalArgumentException;
 
 /**
@@ -119,9 +140,18 @@ public class DemographicServiceUtil {
 	 */
 	@Autowired
 	private Environment env;
+	
+	@Autowired
+	private ObjectMapper objectMapper;
+	
+	@Autowired
+	private TemplateUtil templateUtil;
 
 	@Autowired
 	private RestTemplate restTemplate;
+	
+	@Autowired
+	private ValidationUtil validationUtil;
 
 	@Qualifier("selfTokenRestTemplate")
 	@Autowired
@@ -135,6 +165,47 @@ public class DemographicServiceUtil {
 
 	@Value("${masterdata.resource.url}")
 	private String masterdataResourseUrl;
+	
+	@Value("${email.prebooking.acknowledgement.template}")
+	private String emailPreBookingAcknowledgement;
+	
+	@Value("${email.prebooking.acknowledgement.subject.template}")
+	private String emailPreBookingAcknowledgementSubject;
+	
+	@Value("${email.prebooking.acknowledgement.template}")
+	private String smsPreBookingAcknowledgement;
+	
+	@Value("${emailResourse.url}")
+	private String emailResourseUrl;
+
+	@Value("${smsResourse.url}")
+	private String smsResourseUrl;
+	
+	@Value("${mosip.pre-registration.notification.id}")
+	private String Id;
+
+	@Value("${version}")
+	private String version;
+	
+	@Value("${preregistration.identity}")
+	private String identity;
+
+	@Value("${preregistration.identity.email}")
+	private String email;
+
+	@Value("${preregistration.identity.name}")
+	private String fullName;
+
+	@Value("${preregistration.identity.phone}")
+	private String phone;
+
+	/**
+	 * Autowired reference for {@link #AuditLogUtil}
+	 */
+	@Autowired
+	private AuditLogUtil auditLogUtil;
+	
+	MainResponseDTO<NotificationResponseDTO> response;
 
 	@Autowired
 	private AppointmentService appointmentService;
@@ -163,6 +234,293 @@ public class DemographicServiceUtil {
 		mapper.registerModule(new JavaTimeModule());
 	}
 	
+	/**
+	 * Method to send notification.
+	 * 
+	 * @param demographicRequestDto Applicant demographic details
+	 * @param prid   the pre registration id.
+	 * @return the response dto.
+	 */
+	public MainResponseDTO<NotificationResponseDTO> preBookingNotification(DemographicRequestDTO demographicRequestDto,
+			String prid) throws IOException {
+
+		String resp = null;
+		boolean isSuccess = false;
+		response = new MainResponseDTO<>();
+		NotificationResponseDTO notificationResponse = new NotificationResponseDTO();
+		response.setId(Id);
+		response.setVersion(version);
+		NotificationDTO notificationDto = new NotificationDTO();
+		notificationDto.setPreRegistrationId(prid);
+		notificationDto.setLanguageCode(demographicRequestDto.getLangCode());
+
+		try {
+			resp = sendNotification(notificationDto, demographicRequestDto);
+			notificationResponse.setMessage(resp);
+			response.setResponse(notificationResponse);
+			isSuccess = true;
+		} catch (RuntimeException | IOException ex) {
+			log.error("sessionId", "idType", "id", ExceptionUtils.getStackTrace(ex));
+			log.error("sessionId", "idType", "id", "In notification service of sendNotification " + ex.getMessage());
+			new NotificationExceptionCatcher().handle(ex, response);
+		} finally {
+			response.setResponsetime(validationUtil.getCurrentResponseTime());
+			if (isSuccess) {
+				setAuditValues(EventId.PRE_411.toString(), EventName.NOTIFICATION.toString(),
+						EventType.SYSTEM.toString(),
+						"Pre-Registration data is sucessfully trigger notification to the user",
+						AuditLogVariables.NO_ID.toString(), authUserDetails().getUserId(),
+						authUserDetails().getUsername());
+			} else {
+				setAuditValues(EventId.PRE_405.toString(), EventName.EXCEPTION.toString(), EventType.SYSTEM.toString(),
+						"Failed to trigger notification to the user", AuditLogVariables.NO_ID.toString(),
+						authUserDetails().getUserId(), authUserDetails().getUsername());
+			}
+		}
+		return response;
+
+	}
+
+	public AuthUserDetails authUserDetails() {
+		return (AuthUserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+	}
+	
+	/**
+	 * This method is used to audit all the trigger notification events
+	 * 
+	 * @param eventId
+	 * @param eventName
+	 * @param eventType
+	 * @param description
+	 * @param idType
+	 */
+	public void setAuditValues(String eventId, String eventName, String eventType, String description, String idType,
+			String userId, String userName) {
+		AuditRequestDto auditRequestDto = new AuditRequestDto();
+		auditRequestDto.setEventId(eventId);
+		auditRequestDto.setEventName(eventName);
+		auditRequestDto.setEventType(eventType);
+		auditRequestDto.setDescription(description);
+		auditRequestDto.setSessionUserId(userId);
+		auditRequestDto.setSessionUserName(userName);
+		auditRequestDto.setId(idType);
+		auditRequestDto.setModuleId(AuditLogVariables.NOTIFY.toString());
+		auditRequestDto.setModuleName(AuditLogVariables.NOTIFICATION_SERVICE.toString());
+		auditLogUtil.saveAuditDetails(auditRequestDto);
+	}
+	
+	/**
+	 * This method is calling demographic getApplication service to get the user
+	 * emailId and mobile number
+	 * 
+	 * @param notificationDto
+	 * @param langCode
+	 * @param file
+	 * @return
+	 * @throws IOException
+	 */
+	public String sendNotification(NotificationDTO notificationDto, DemographicRequestDTO dto) throws IOException {
+
+		try {
+			ObjectMapper objectMapper = new ObjectMapper();
+			objectMapper = JsonMapper.builder().addModule(new AfterburnerModule()).build();
+			objectMapper.registerModule(new JavaTimeModule());
+
+			JsonNode responseNode = objectMapper.readTree(dto.getDemographicDetails().toJSONString());
+
+			responseNode = responseNode.get(identity);
+
+			JsonNode arrayNode = responseNode.get(fullName);
+			List<KeyValuePairDto<String, String>> langaueNamePairs = new ArrayList<KeyValuePairDto<String, String>>();
+			KeyValuePairDto langaueNamePair = null;
+			if (arrayNode.isArray()) {
+				for (JsonNode jsonNode : arrayNode) {
+					langaueNamePair = new KeyValuePairDto();
+					langaueNamePair.setKey(jsonNode.get("language").asText().trim());
+					langaueNamePair.setValue(jsonNode.get("value").asText().trim());
+					langaueNamePairs.add(langaueNamePair);
+				}
+			}
+			notificationDto.setFullName(langaueNamePairs);
+			if (responseNode.get(email) != null) {
+				String emailId = responseNode.get(email).asText();
+				notificationDto.setEmailID(emailId);
+				notify(NotificationRequestCodes.EMAIL.getCode(), notificationDto);
+			}
+			if (responseNode.get(phone) != null) {
+				String phoneNumber = responseNode.get(phone).asText();
+				notificationDto.setMobNum(phoneNumber);
+				notify(NotificationRequestCodes.SMS.getCode(), notificationDto);
+
+			}
+			if (responseNode.get("email") == null && responseNode.get("phone") == null) {
+				log.info("sessionId", "idType", "id",
+						"In notification service of sendNotification failed to send Email and sms request ");
+			}
+			return NotificationRequestCodes.MESSAGE.getCode();
+		} catch (RestClientException ex) {
+			log.error("sessionId", "idType", "id", ExceptionUtils.getStackTrace(ex));
+			log.error("sessionId", "idType", "id",
+					"In getDemographicDetailsWithPreId method of notification service - " + ex.getMessage());
+			throw new RestCallException(NotificationErrorCodes.PRG_PAM_ACK_011.getCode(),
+					NotificationErrorMessages.DEMOGRAPHIC_CALL_FAILED.getMessage());
+		}
+	}
+
+	public MainResponseDTO<NotificationResponseDTO> notify(String notificationType, NotificationDTO acknowledgementDTO)
+			throws IOException {
+
+		log.info("sessionId", "idType", "id", "In notify method of NotificationUtil service:" + notificationType);
+
+		MainResponseDTO<NotificationResponseDTO> response = new MainResponseDTO<>();
+		if (notificationType.equals(RequestCodes.SMS)) {
+			response = smsNotification(acknowledgementDTO);
+		}
+		if (notificationType.equals(RequestCodes.EMAIL)) {
+			response = emailNotification(acknowledgementDTO, null);
+		}
+
+		return response;
+	}
+
+	/**
+	 * This method will send the email notification to the user
+	 * 
+	 * @param acknowledgementDTO
+	 * @param file
+	 * @return
+	 * @throws IOException
+	 */
+	public MainResponseDTO<NotificationResponseDTO> emailNotification(NotificationDTO acknowledgementDTO,
+			MultipartFile file) throws IOException {
+		log.info("sessionId", "idType", "id", "In emailNotification method of NotificationUtil service");
+
+		HttpEntity<byte[]> doc = null;
+		String fileText = null;
+		if (file != null) {
+			LinkedMultiValueMap<String, String> pdfHeaderMap = new LinkedMultiValueMap<>();
+			pdfHeaderMap.add("Content-disposition",
+					"form-data; name=attachments; filename=" + file.getOriginalFilename());
+			pdfHeaderMap.add("Content-type", "text/plain");
+			doc = new HttpEntity<>(file.getBytes(), pdfHeaderMap);
+		}
+
+		ResponseEntity<ResponseWrapper<NotificationResponseDTO>> resp = null;
+		MainResponseDTO<NotificationResponseDTO> response = new MainResponseDTO<>();
+		String mergeTemplate = null;
+		for (KeyValuePairDto keyValuePair : acknowledgementDTO.getFullName()) {
+			fileText = templateUtil.getTemplate(keyValuePair.getKey(), emailPreBookingAcknowledgement);
+			String languageWiseTemplate = templateUtil.templateMerge(fileText, acknowledgementDTO,
+					(String) keyValuePair.getKey());
+			if (mergeTemplate == null) {
+				mergeTemplate = languageWiseTemplate + System.lineSeparator();
+			} else {
+				mergeTemplate += System.lineSeparator() + languageWiseTemplate + System.lineSeparator();
+			}
+		}
+
+		HttpHeaders headers = new HttpHeaders();
+		headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+		MultiValueMap<Object, Object> emailMap = new LinkedMultiValueMap<>();
+		emailMap.add("attachments", doc);
+		emailMap.add("mailContent", mergeTemplate);
+
+		emailMap.add("mailSubject", getEmailSubject(acknowledgementDTO));
+
+		emailMap.add("mailTo", acknowledgementDTO.getEmailID());
+		HttpEntity<MultiValueMap<Object, Object>> httpEntity = new HttpEntity<>(emailMap, headers);
+		System.out.println(httpEntity);
+		log.info("sessionId", "idType", "id",
+				"In emailNotification method of NotificationUtil service emailResourseUrl: " + emailResourseUrl);
+		try {
+			resp = selfTokenrestTemplate.exchange(emailResourseUrl, HttpMethod.POST, httpEntity,
+					new ParameterizedTypeReference<ResponseWrapper<NotificationResponseDTO>>() {
+					});
+		} catch (RestClientException e) {
+			throw new RestCallException(e.getMessage(), e.getCause());
+		}
+
+		NotificationResponseDTO notifierResponse = new NotificationResponseDTO();
+		notifierResponse.setMessage(resp.getBody().getResponse().getMessage());
+		notifierResponse.setStatus(resp.getBody().getResponse().getStatus());
+		response.setResponse(notifierResponse);
+		response.setResponsetime(getCurrentResponseTime());
+
+		return response;
+	}
+
+	/**
+	 * This method will send the sms notification to the user
+	 * 
+	 * @param acknowledgementDTO
+	 * @return
+	 * @throws IOException
+	 */
+	public MainResponseDTO<NotificationResponseDTO> smsNotification(NotificationDTO acknowledgementDTO)
+			throws IOException {
+		log.info("sessionId", "idType", "id", "In smsNotification method of NotificationUtil service");
+		MainResponseDTO<NotificationResponseDTO> response = new MainResponseDTO<>();
+		ResponseEntity<ResponseWrapper<NotificationResponseDTO>> resp = null;
+		String mergeTemplate = null;
+		for (KeyValuePairDto keyValuePair : acknowledgementDTO.getFullName()) {
+			String languageWiseTemplate = null;
+			languageWiseTemplate = templateUtil.templateMerge(
+					templateUtil.getTemplate(keyValuePair.getKey(), smsPreBookingAcknowledgement), acknowledgementDTO,
+					(String) keyValuePair.getKey());
+			if (mergeTemplate == null) {
+				mergeTemplate = languageWiseTemplate;
+			} else {
+				mergeTemplate += System.lineSeparator() + languageWiseTemplate;
+			}
+		}
+
+		SMSRequestDTO smsRequestDTO = new SMSRequestDTO();
+		smsRequestDTO.setMessage(mergeTemplate);
+		smsRequestDTO.setNumber(acknowledgementDTO.getMobNum());
+		RequestWrapper<SMSRequestDTO> req = new RequestWrapper<>();
+		req.setRequest(smsRequestDTO);
+		HttpHeaders headers = new HttpHeaders();
+		headers.setContentType(MediaType.APPLICATION_JSON);
+
+		HttpEntity<RequestWrapper<SMSRequestDTO>> httpEntity = new HttpEntity<>(req, headers);
+		log.info("sessionId", "idType", "id",
+				"In smsNotification method of NotificationUtil service smsResourseUrl: " + smsResourseUrl);
+		resp = selfTokenrestTemplate.exchange(smsResourseUrl, HttpMethod.POST, httpEntity,
+				new ParameterizedTypeReference<ResponseWrapper<NotificationResponseDTO>>() {
+				});
+
+		NotificationResponseDTO notifierResponse = new NotificationResponseDTO();
+		notifierResponse.setMessage(resp.getBody().getResponse().getMessage());
+		notifierResponse.setStatus(resp.getBody().getResponse().getStatus());
+		response.setResponse(notifierResponse);
+		response.setResponsetime(getCurrentResponseTime());
+		return response;
+	}
+
+	/**
+	 * This method will give the email subject
+	 * 
+	 * @param acknowledgementDTO
+	 * @return
+	 * @throws IOException
+	 */
+	public String getEmailSubject(NotificationDTO acknowledgementDTO) throws IOException {
+		log.info("sessionId", "idType", "id", "In getEmailSubject method of NotificationUtil service");
+		String emailSubject = "";
+		int noOfLang = acknowledgementDTO.getFullName().size();
+		for (KeyValuePairDto keyValuePair : acknowledgementDTO.getFullName()) {
+
+			emailSubject = emailSubject + templateUtil.templateMerge(
+					templateUtil.getTemplate(keyValuePair.getKey(), emailPreBookingAcknowledgementSubject),
+					acknowledgementDTO, (String) keyValuePair.getKey());
+
+			if (noOfLang > 1) {
+				noOfLang--;
+				emailSubject = emailSubject + " / ";
+			}
+		}
+		return emailSubject;
+	}
 	/**
 	 * This setter method is used to assign the initial demographic entity values to
 	 * the createDTO
