@@ -347,8 +347,7 @@ public class DemographicService implements DemographicServiceIntf {
 			mainResponseDTO.setResponsetime(serviceUtil.getCurrentResponseTime());
 			log.info("sessionId", "idType", "id",
 					"Pre Registration end time : " + DateUtils.getUTCCurrentDateTimeString());
-			serviceUtil.preBookingNotification(request.getRequest(), preId);
-			} catch (HttpServerErrorException | HttpClientErrorException e) {
+		} catch (HttpServerErrorException | HttpClientErrorException e) {
 			log.error("sessionId", "idType", "id", ExceptionUtils.getStackTrace(e));
 			log.error("sessionId", "idType", "id",
 					"In pre-registration service of addPreRegistration- " + e.getResponseBodyAsString());
