@@ -97,7 +97,6 @@ import io.mosip.preregistration.core.util.HashUtill;
 import io.mosip.preregistration.core.util.ValidationUtil;
 import io.mosip.preregistration.demographic.exception.system.DateParseException;
 import io.mosip.preregistration.demographic.exception.system.JsonParseException;
-import io.mosip.preregistration.demographic.exception.system.SystemFileIOException;
 import io.mosip.preregistration.demographic.exception.system.SystemIllegalArgumentException;
 
 /**
@@ -523,9 +522,8 @@ public class DemographicServiceUtil {
 			log.error("sessionId", "idType", "id",
 					"In pre-registration service util of getPreregistrationIdentityJson- " + ex.getMessage());
 			throw new SystemFileIOException(DemographicErrorCodes.PRG_PAM_APP_018.getCode(),
-				DemographicErrorMessages.UBALE_TO_READ_IDENTITY_JSON.getMessage(), null);
+					DemographicErrorMessages.UBALE_TO_READ_IDENTITY_JSON.getMessage(), null);
 		}
-		//return null;
 	}
 
 	public String generateId() {
