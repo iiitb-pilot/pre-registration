@@ -97,6 +97,7 @@ import io.mosip.preregistration.core.util.HashUtill;
 import io.mosip.preregistration.core.util.ValidationUtil;
 import io.mosip.preregistration.demographic.exception.system.DateParseException;
 import io.mosip.preregistration.demographic.exception.system.JsonParseException;
+import io.mosip.preregistration.demographic.exception.system.SystemFileIOException;
 import io.mosip.preregistration.demographic.exception.system.SystemIllegalArgumentException;
 
 /**
