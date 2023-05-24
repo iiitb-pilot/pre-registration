@@ -87,7 +87,7 @@ public class NotificationUtil {
 	private String dateTimeFormat;
 
 	public MainResponseDTO<NotificationResponseDTO> notify(String notificationType, NotificationDTO acknowledgementDTO,
-			MultipartFile file,String prid) throws IOException {
+			MultipartFile file, String prid) throws IOException {
 
 		log.info("sessionId", "idType", "id", "In notify method of NotificationUtil service:" + notificationType);
 
@@ -127,7 +127,7 @@ public class NotificationUtil {
 	 * @throws IOException
 	 */
 	public MainResponseDTO<NotificationResponseDTO> emailNotification(NotificationDTO acknowledgementDTO,
-			MultipartFile file,String prid) throws IOException {
+			MultipartFile file, String prid) throws IOException {
 		log.info("sessionId", "idType", "id", "In emailNotification method of NotificationUtil service");
 		HttpEntity<byte[]> doc = null;
 		String fileText = null;

@@ -354,18 +354,18 @@ public class DemographicService implements DemographicServiceIntf {
 			isSuccess = true;
 			mainResponseDTO.setResponsetime(serviceUtil.getCurrentResponseTime());
 			log.info("sessionId", "idType", "id",
-					"Pre Registration end time : " + DateUtils.getUTCCurrentDateTimeString());	
+					"Pre Registration end time : " + DateUtils.getUTCCurrentDateTimeString());
 			request.setId(preRegistrationNotificationId);
 			String jsonString = mapper.writeValueAsString(request);
-			notificationService.sendNotification(jsonString,request.getRequest().getLangCode(),null,false,preId);
-			} catch (HttpServerErrorException | HttpClientErrorException e) {
+			notificationService.sendNotification(jsonString, request.getRequest().getLangCode(), null, false, preId);
+		} catch (HttpServerErrorException | HttpClientErrorException e) {
 
 			log.error("sessionId", "idType", "id", ExceptionUtils.getStackTrace(e));
 			log.error("sessionId", "idType", "id",
 					"In pre-registration service of addPreRegistration- " + e.getResponseBodyAsString());
 			List<ServiceError> errorList = ExceptionUtils.getServiceErrorList(e.getResponseBodyAsString());
 			new DemographicExceptionCatcher().handle(new DemographicServiceException(errorList, null), mainResponseDTO);
-		 } catch (Exception ex) {
+		} catch (Exception ex) {
 			log.error("sessionId", "idType", "id", ExceptionUtils.getStackTrace(ex));
 			log.error("sessionId", "idType", "id",
 					"In pre-registration service of addPreRegistration- " + ex.getMessage());
