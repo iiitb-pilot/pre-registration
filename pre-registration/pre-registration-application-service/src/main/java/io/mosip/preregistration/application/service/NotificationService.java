@@ -243,13 +243,11 @@ public class NotificationService {
 		}
 		return response;
 	}
-	
+
 	public MainResponseDTO<NotificationResponseDTO> sendNotification(String jsonString, String langCode,
 			MultipartFile file, boolean isLatest) {
-				return sendNotification(jsonString,langCode,file,isLatest,null); 		
+		return sendNotification(jsonString, langCode, file, isLatest, null);
 	}
-
-		
 
 	/**
 	 * This method is calling demographic getApplication service to get the user
@@ -335,7 +333,7 @@ public class NotificationService {
 		auditLogUtil.saveAuditDetails(auditRequestDto);
 	}
 
-	public MainResponseDTO<DemographicResponseDTO> notificationDtoValidation(NotificationDTO dto,String prid)
+	public MainResponseDTO<DemographicResponseDTO> notificationDtoValidation(NotificationDTO dto, String prid)
 			throws IOException, ParseException {
 		MainResponseDTO<DemographicResponseDTO> demoDetail = getDemographicDetails(dto, prid);
 		if (prid == null) {
@@ -377,10 +375,10 @@ public class NotificationService {
 		}
 		return demoDetail;
 	}
-	
+
 	public MainResponseDTO<DemographicResponseDTO> notificationDtoValidation(NotificationDTO dto)
 			throws IOException, ParseException {
-				return notificationDtoValidation(dto,null);
+		return notificationDtoValidation(dto, null);
 	}
 
 	/**
@@ -392,11 +390,11 @@ public class NotificationService {
 	 * @throws ParseException
 	 */
 
-	public MainResponseDTO<DemographicResponseDTO> getDemographicDetails(NotificationDTO notificationDto,String prid)
+	public MainResponseDTO<DemographicResponseDTO> getDemographicDetails(NotificationDTO notificationDto, String prid)
 			throws IOException, ParseException {
 		MainResponseDTO<DemographicResponseDTO> responseEntity = demographicServiceIntf
 				.getDemographicData(notificationDto.getPreRegistrationId());
-		if (!(prid != null)) {
+		if (prid == null) {
 			ObjectMapper objectMapper = new ObjectMapper();
 			objectMapper = JsonMapper.builder().addModule(new AfterburnerModule()).build();
 			objectMapper.registerModule(new JavaTimeModule());
@@ -436,12 +434,12 @@ public class NotificationService {
 		}
 		return responseEntity;
 	}
-	
+
 	public MainResponseDTO<DemographicResponseDTO> getDemographicDetails(NotificationDTO notificationDto)
 			throws IOException, ParseException {
-				
-		return getDemographicDetails(notificationDto,null);
-			
+
+		return getDemographicDetails(notificationDto, null);
+
 	}
 
 	/**

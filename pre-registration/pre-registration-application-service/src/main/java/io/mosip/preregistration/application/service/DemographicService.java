@@ -133,9 +133,6 @@ public class DemographicService implements DemographicServiceIntf {
 	@Autowired
 	private DemographicServiceUtil serviceUtil;
 	
-	@Autowired
-	private ObjectMapper mapper;
-
 	/**
 	 * Autowired reference for {@link #JsonValidatorImpl}
 	 */
@@ -356,10 +353,9 @@ public class DemographicService implements DemographicServiceIntf {
 			log.info("sessionId", "idType", "id",
 					"Pre Registration end time : " + DateUtils.getUTCCurrentDateTimeString());
 			request.setId(preRegistrationNotificationId);
-			String jsonString = mapper.writeValueAsString(request);
+			String jsonString = objectMapper.writeValueAsString(request);
 			notificationService.sendNotification(jsonString, request.getRequest().getLangCode(), null, false, preId);
 		} catch (HttpServerErrorException | HttpClientErrorException e) {
-
 			log.error("sessionId", "idType", "id", ExceptionUtils.getStackTrace(e));
 			log.error("sessionId", "idType", "id",
 					"In pre-registration service of addPreRegistration- " + e.getResponseBodyAsString());
