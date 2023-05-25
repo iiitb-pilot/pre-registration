@@ -132,7 +132,7 @@ public class DemographicService implements DemographicServiceIntf {
 	 */
 	@Autowired
 	private DemographicServiceUtil serviceUtil;
-
+	
 	/**
 	 * Autowired reference for {@link #JsonValidatorImpl}
 	 */
@@ -150,7 +150,7 @@ public class DemographicService implements DemographicServiceIntf {
 
 	@Autowired
 	ValidationUtil validationUtil;
-
+	
 	/**
 	 * Reference for ${document.resource.url} from property file
 	 */
@@ -231,16 +231,17 @@ public class DemographicService implements DemographicServiceIntf {
 
 	@Value("${preregistration.config.identityjson}")
 	private String preregistrationIdJson;
+	
+	@Value("${mosip.pre-registration.notification.id}")
+	private String preRegistrationNotificationId;
+	
 	/**
 	 * Response status
 	 */
 	protected String trueStatus = "true";
 
 	private String getIdentityJsonString = "";
-
-	@Autowired
-	private ObjectMapper objectMapper;
-
+	
 	private static final String INDENTITY = "identity";
 
 	private static final String PROPERTIES = "properties";
@@ -250,8 +251,13 @@ public class DemographicService implements DemographicServiceIntf {
 	
 	@Value("${mosip.utc-datetime-pattern}")
 	private String mosipDateTimeFormat;
-
-
+	
+	@Autowired
+	NotificationService notificationService;
+	
+	@Autowired
+	private ObjectMapper objectMapper;
+	
 	/**
 	 * This method acts as a post constructor to initialize the required request
 	 * parameters.
@@ -341,12 +347,14 @@ public class DemographicService implements DemographicServiceIntf {
 							StatusCodes.APPLICATION_INCOMPLETE.getCode(), authUserDetails().getUserId(), preId));
 			DemographicCreateResponseDTO res = serviceUtil.setterForCreatePreRegistration(demographicEntity,
 					demographicRequest.getDemographicDetails());
-
 			mainResponseDTO.setResponse(res);
 			isSuccess = true;
 			mainResponseDTO.setResponsetime(serviceUtil.getCurrentResponseTime());
 			log.info("sessionId", "idType", "id",
 					"Pre Registration end time : " + DateUtils.getUTCCurrentDateTimeString());
+			request.setId(preRegistrationNotificationId);
+			String jsonString = objectMapper.writeValueAsString(request);
+			notificationService.sendNotification(jsonString, request.getRequest().getLangCode(), null, false, preId);
 		} catch (HttpServerErrorException | HttpClientErrorException e) {
 			log.error("sessionId", "idType", "id", ExceptionUtils.getStackTrace(e));
 			log.error("sessionId", "idType", "id",
@@ -358,9 +366,7 @@ public class DemographicService implements DemographicServiceIntf {
 			log.error("sessionId", "idType", "id",
 					"In pre-registration service of addPreRegistration- " + ex.getMessage());
 			new DemographicExceptionCatcher().handle(ex, mainResponseDTO);
-
 		} finally {
-
 			if (isSuccess) {
 				setAuditValues(EventId.PRE_407.toString(), EventName.PERSIST.toString(), EventType.BUSINESS.toString(),
 						"Pre-Registration data is sucessfully saved in the demographic table",
@@ -373,10 +379,7 @@ public class DemographicService implements DemographicServiceIntf {
 			}
 		}
 		return mainResponseDTO;
-
-	}
-
-	
+	}	
 	/*
 	 * This method is used to update the demographic data by PreId
 	 * 
