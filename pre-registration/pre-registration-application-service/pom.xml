@@ -16,7 +16,7 @@
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<kernel.core.version>1.2.0.1-B1</kernel.core.version>
-		<kernel.khazana.version>1.2.0.1-B1</kernel.khazana.version>
+		<kernel.khazana.version>1.2.1-SNAPSHOT</kernel.khazana.version>
 		<kernel.idobjectvalidator.version>1.2.0.1-B1</kernel.idobjectvalidator.version>
 		<kernel.templatemanager.velocity.version>1.2.0.1-B1</kernel.templatemanager.velocity.version>
 		<kernel.qrcodegenerator.zxing.version>1.2.0.1-B1</kernel.qrcodegenerator.zxing.version>
