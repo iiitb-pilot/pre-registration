@@ -118,6 +118,12 @@ public class NotificationService {
 
 	@Value("${preregistration.identity.name}")
 	private String fullName;
+	
+	@Value("${preregistration.identity.firstName}")
+	private String firstName;
+	
+	@Value("${preregistration.identity.lastName}")
+	private String lastName;
 
 	@Value("${preregistration.identity.phone}")
 	private String phone;
@@ -271,19 +277,38 @@ public class NotificationService {
 
 			responseNode = responseNode.get(identity);
 
-			JsonNode arrayNode = responseNode.get(fullName);
-			List<KeyValuePairDto<String, String>> langaueNamePairs = new ArrayList<KeyValuePairDto<String, String>>();
-			KeyValuePairDto langaueNamePair = null;
-			if (arrayNode.isArray()) {
-				for (JsonNode jsonNode : arrayNode) {
-					langaueNamePair = new KeyValuePairDto();
-					langaueNamePair.setKey(jsonNode.get("language").asText().trim());
-					langaueNamePair.setValue(jsonNode.get("value").asText().trim());
-					langaueNamePairs.add(langaueNamePair);
+			JsonNode arrayNodeFirstName = responseNode.get(firstName);
+			JsonNode arrayNodeLastName = responseNode.get(lastName);
+			List<KeyValuePairDto<String, String>> langaueNamePairsFirstName = new ArrayList<KeyValuePairDto<String, String>>();
+			List<KeyValuePairDto<String, String>> langaueNamePairsFullName = new ArrayList<KeyValuePairDto<String, String>>();
+			KeyValuePairDto langaueNamePairFirstName = null;
+			if (arrayNodeFirstName.isArray()) {
+				for (JsonNode jsonNodeFirstName : arrayNodeFirstName) {
+					langaueNamePairFirstName = new KeyValuePairDto();
+					langaueNamePairFirstName.setKey(jsonNodeFirstName.get("language").asText().trim());
+					langaueNamePairFirstName.setValue(jsonNodeFirstName.get("value").asText().trim());
+					langaueNamePairsFirstName.add(langaueNamePairFirstName);
+				}
+			}
+			KeyValuePairDto langaueNamePairFirstNameAndLastName = null;
+			if (arrayNodeLastName.isArray()) {
+				for (JsonNode jsonNodeLastName : arrayNodeLastName) {
+					langaueNamePairFirstNameAndLastName = new KeyValuePairDto();
+					String firstNameAndLastName = "";
+					String lastName = jsonNodeLastName.get("value").asText().trim();
+					for (KeyValuePairDto<String, String> firstName : langaueNamePairsFirstName) {
+						if (jsonNodeLastName.get("language").asText().trim().equals(firstName.getKey())) {
+							firstNameAndLastName = firstName.getValue().concat(" " + lastName);
+							break;
+						}
+					}
+					langaueNamePairFirstNameAndLastName.setKey(jsonNodeLastName.get("language").asText().trim());
+					langaueNamePairFirstNameAndLastName.setValue(firstNameAndLastName);
+					langaueNamePairsFullName.add(langaueNamePairFirstNameAndLastName);
 				}
 			}
 
-			notificationDto.setFullName(langaueNamePairs);
+			notificationDto.setFullName(langaueNamePairsFullName);
 			if (responseNode.get(email) != null) {
 				String emailId = responseNode.get(email).asText();
 				notificationDto.setEmailID(emailId);
