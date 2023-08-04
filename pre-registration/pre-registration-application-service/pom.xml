@@ -97,7 +97,7 @@
 		<dependency>
 			<groupId>io.mosip.commons</groupId>
 			<artifactId>khazana</artifactId>
-			<version>1.2.0.1-SNAPSHOT</version>
+			<version>${kernel.khazana.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>io.mosip.kernel</groupId>
