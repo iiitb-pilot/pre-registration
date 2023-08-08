@@ -611,18 +611,7 @@ public class DocumentService implements DocumentServiceIntf {
 					if (demographicResponse.getStatusCode().toLowerCase()
 							.equals(StatusCodes.PENDING_APPOINTMENT.getCode().toLowerCase())) {
 						log.info("check if mandatory document deleted");
-						DemographicEntity demographicEntity = null;
-						/*try {
-							demographicEntity = documnetDAO.getDemographicEntityForPrid(preRegistrationId);
-						} catch (DocumentNotFoundException ex) {
-							if (demographicResponse.getStatusCode().toLowerCase()
-									.equals(StatusCodes.PENDING_APPOINTMENT.getCode().toLowerCase())
-									&& serviceUtil.validMandatoryDocuments(documentEntity.getDemographicEntity())
-											.size() > 0) {
-								serviceUtil.updateApplicationStatusToIncomplete(documentEntity.getDemographicEntity());
-							}
-						}*/
-						demographicEntity = demographicRepository.findBypreRegistrationId(preRegistrationId);
+						DemographicEntity demographicEntity = demographicRepository.findBypreRegistrationId(preRegistrationId);
 						if (isMandatoryDocumentDeleted(demographicEntity)) {
 							log.info("mandatory document deleted");
 							serviceUtil.updateApplicationStatusToIncomplete(demographicEntity);
