@@ -32,6 +32,8 @@ import io.mosip.kernel.core.util.DateUtils;
 import io.mosip.preregistration.application.code.DocumentStatusMessages;
 import io.mosip.preregistration.application.dto.DocumentRequestDTO;
 import io.mosip.preregistration.application.dto.DocumentResponseDTO;
+import io.mosip.preregistration.application.errorcodes.DemographicErrorCodes;
+import io.mosip.preregistration.application.errorcodes.DemographicErrorMessages;
 import io.mosip.preregistration.application.errorcodes.DocumentErrorCodes;
 import io.mosip.preregistration.application.errorcodes.DocumentErrorMessages;
 import io.mosip.preregistration.application.exception.DocumentFailedToCopyException;
@@ -612,9 +614,14 @@ public class DocumentService implements DocumentServiceIntf {
 							.equals(StatusCodes.PENDING_APPOINTMENT.getCode().toLowerCase())) {
 						log.info("check if mandatory document deleted");
 						DemographicEntity demographicEntity = demographicRepository.findBypreRegistrationId(preRegistrationId);
-						if (isMandatoryDocumentDeleted(demographicEntity)) {
-							log.info("mandatory document deleted");
-							serviceUtil.updateApplicationStatusToIncomplete(demographicEntity);
+						if (demographicEntity != null) {
+							if (isMandatoryDocumentDeleted(demographicEntity)) {
+								log.info("mandatory document deleted");
+								serviceUtil.updateApplicationStatusToIncomplete(demographicEntity);
+							}
+						} else {
+							throw new RecordNotFoundException(DemographicErrorCodes.PRG_PAM_APP_005.getCode(),
+									DemographicErrorMessages.UNABLE_TO_FETCH_THE_PRE_REGISTRATION.getMessage());
 						}
 					}
 					if (!isDeleted) {
