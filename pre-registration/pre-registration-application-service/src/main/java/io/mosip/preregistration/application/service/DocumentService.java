@@ -41,6 +41,7 @@ import io.mosip.preregistration.application.exception.InvalidDocumentIdExcepion;
 import io.mosip.preregistration.application.exception.RecordFailedToUpdateException;
 import io.mosip.preregistration.application.exception.RecordNotFoundException;
 import io.mosip.preregistration.application.exception.util.DocumentExceptionCatcher;
+import io.mosip.preregistration.application.repository.DemographicRepository;
 import io.mosip.preregistration.application.repository.DocumentDAO;
 import io.mosip.preregistration.core.code.AuditLogVariables;
 import io.mosip.preregistration.core.code.EventId;
@@ -84,7 +85,9 @@ public class DocumentService implements DocumentServiceIntf {
 	 */
 	@Autowired
 	private DocumentDAO documnetDAO;
-
+	
+	@Autowired
+	private DemographicRepository demographicRepository;
 	/**
 	 * Reference for ${mosip.preregistration.document.upload.id} from property file
 	 */
@@ -609,7 +612,7 @@ public class DocumentService implements DocumentServiceIntf {
 							.equals(StatusCodes.PENDING_APPOINTMENT.getCode().toLowerCase())) {
 						log.info("check if mandatory document deleted");
 						DemographicEntity demographicEntity = null;
-						try {
+						/*try {
 							demographicEntity = documnetDAO.getDemographicEntityForPrid(preRegistrationId);
 						} catch (DocumentNotFoundException ex) {
 							if (demographicResponse.getStatusCode().toLowerCase()
@@ -618,7 +621,8 @@ public class DocumentService implements DocumentServiceIntf {
 											.size() > 0) {
 								serviceUtil.updateApplicationStatusToIncomplete(documentEntity.getDemographicEntity());
 							}
-						}
+						}*/
+						demographicEntity = demographicRepository.findBypreRegistrationId(preRegistrationId);
 						if (isMandatoryDocumentDeleted(demographicEntity)) {
 							log.info("mandatory document deleted");
 							serviceUtil.updateApplicationStatusToIncomplete(demographicEntity);
