@@ -124,9 +124,6 @@ public class NotificationService {
 
 	@Value("${preregistration.notification.nameFormat}")
 	private String nameFormat;
-	
-	@Value("${preregistration.identity.lastName}")
-	private String lastName;
 
 	@Value("#{'${mosip.notificationtype}'.split('\\|')}")
 	private List<String> notificationTypeList;
@@ -274,7 +271,7 @@ public class NotificationService {
 
 			responseNode = responseNode.get(identity);
 
-			JsonNode arrayNode = responseNode.get(lastName);
+			JsonNode arrayNode = responseNode.get(fullName);
 			List<KeyValuePairDto<String, String>> langaueNamePairs = new ArrayList<KeyValuePairDto<String, String>>();
 			KeyValuePairDto langaueNamePair = null;
 			if (arrayNode.isArray()) {
@@ -416,8 +413,8 @@ public class NotificationService {
 			}
 			boolean isNameMatchFound = false;
 			if (!notificationDto.getIsBatch()) {
-				if (lastName != null) {
-					String[] nameKeys = lastName.split(",");
+				if (nameFormat != null) {
+					String[] nameKeys = nameFormat.split(",");
 					for (int i = 0; i < nameKeys.length; i++) {
 						JsonNode arrayNode = responseNode.get(nameKeys[i]);
 						for (JsonNode jsonNode : arrayNode) {
