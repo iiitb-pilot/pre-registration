@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -272,18 +273,53 @@ public class NotificationService {
 			responseNode = responseNode.get(identity);
 
 			JsonNode arrayNode = responseNode.get(fullName);
+
 			List<KeyValuePairDto<String, String>> langaueNamePairs = new ArrayList<KeyValuePairDto<String, String>>();
-			KeyValuePairDto langaueNamePair = null;
-			if (arrayNode.isArray()) {
-				for (JsonNode jsonNode : arrayNode) {
-					langaueNamePair = new KeyValuePairDto();
-					langaueNamePair.setKey(jsonNode.get("language").asText().trim());
-					langaueNamePair.setValue(jsonNode.get("value").asText().trim());
-					langaueNamePairs.add(langaueNamePair);
+			List<KeyValuePairDto<String, String>> langaueNamePairsfullName = new ArrayList<KeyValuePairDto<String, String>>();
+			KeyValuePairDto<String, String> langaueNamePair = null;
+			for (String name : fullName.split(",")) {
+
+				JsonNode arrayNodecomma = responseNode.get(name);
+
+				if (!arrayNodecomma.isEmpty() || arrayNodecomma != null) {
+
+					if (langaueNamePairsfullName.isEmpty()) {
+
+						if (!arrayNodecomma.isEmpty() || arrayNodecomma != null && arrayNodecomma.isArray()) {
+							for (JsonNode jsonNode : arrayNodecomma) {
+								langaueNamePair = new KeyValuePairDto();
+								langaueNamePair.setKey(jsonNode.get("language").asText().trim());
+								langaueNamePair.setValue(jsonNode.get("value").asText().trim() + " ");
+								langaueNamePairs.add(langaueNamePair);
+							}
+						}
+						for (KeyValuePairDto<String, String> keyValuePair : langaueNamePairs) {
+							langaueNamePairsfullName.add(keyValuePair);
+						}
+						langaueNamePairs.clear();
+
+					} else {
+						for (KeyValuePairDto<String, String> langaueNamePairFullName : langaueNamePairsfullName) {
+							for (JsonNode jsonNode : arrayNodecomma) {
+								if (langaueNamePairFullName.getKey().equals(jsonNode.get("language").asText().trim())) {
+									langaueNamePairFullName.setValue(langaueNamePairFullName.getValue()
+											.concat(jsonNode.get("value").asText().trim() + " "));
+									langaueNamePairFullName.setKey(jsonNode.get("language").asText().trim());
+									langaueNamePairs.add(langaueNamePairFullName);
+								}
+							}
+
+						}
+						langaueNamePairsfullName.clear();
+						for (KeyValuePairDto<String, String> keyValuePair : langaueNamePairs) {
+							langaueNamePairsfullName.add(keyValuePair);
+						}
+						langaueNamePairs.clear();
+					}
 				}
 			}
 
-			notificationDto.setFullName(langaueNamePairs);
+			notificationDto.setFullName(langaueNamePairsfullName);
 			if (responseNode.get(email) != null) {
 				String emailId = responseNode.get(email).asText();
 				notificationDto.setEmailID(emailId);
@@ -413,18 +449,13 @@ public class NotificationService {
 			}
 			boolean isNameMatchFound = false;
 			if (!notificationDto.getIsBatch()) {
-				if (nameFormat != null) {
-					String[] nameKeys = nameFormat.split(",");
-					for (int i = 0; i < nameKeys.length; i++) {
-						JsonNode arrayNode = responseNode.get(nameKeys[i]);
-						for (JsonNode jsonNode : arrayNode) {
-							if (notificationDto.getName().trim().equals(jsonNode.get("value").asText().trim())) {
-								isNameMatchFound = true;
-								break;
-							}
-						}
-					}
 
+				for (KeyValuePairDto<String, String> langaueNamePairFullName : notificationDto.getFullName()) {
+					if (notificationDto.getName().trim().equals(langaueNamePairFullName.getValue().trim())) {
+						isNameMatchFound = true;
+						break;
+
+					}
 				}
 				if (!isNameMatchFound) {
 					throw new MandatoryFieldException(NotificationErrorCodes.PRG_PAM_ACK_008.getCode(),
