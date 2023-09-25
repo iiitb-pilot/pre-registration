@@ -271,51 +271,10 @@ public class NotificationService {
 					.readTree(responseEntity.getResponse().getDemographicDetails().toJSONString());
 
 			responseNode = responseNode.get(identity);
-
-			List<KeyValuePairDto<String, String>> langaueNamePairs = new ArrayList<KeyValuePairDto<String, String>>();
+			
 			List<KeyValuePairDto<String, String>> langaueNamePairsfullName = new ArrayList<KeyValuePairDto<String, String>>();
-			KeyValuePairDto<String, String> langaueNamePair = null;
-			for (String name : fullName.split(",")) {
-
-				JsonNode arrayNodecomma = responseNode.get(name);
-
-				if (!arrayNodecomma.isEmpty() || arrayNodecomma != null) {
-
-					if (langaueNamePairsfullName.isEmpty()) {
-
-						if (!arrayNodecomma.isEmpty() || arrayNodecomma != null && arrayNodecomma.isArray()) {
-							for (JsonNode jsonNode : arrayNodecomma) {
-								langaueNamePair = new KeyValuePairDto();
-								langaueNamePair.setKey(jsonNode.get("language").asText().trim());
-								langaueNamePair.setValue(jsonNode.get("value").asText().trim() + " ");
-								langaueNamePairs.add(langaueNamePair);
-							}
-						}
-						for (KeyValuePairDto<String, String> keyValuePair : langaueNamePairs) {
-							langaueNamePairsfullName.add(keyValuePair);
-						}
-						langaueNamePairs.clear();
-
-					} else {
-						for (KeyValuePairDto<String, String> langaueNamePairFullName : langaueNamePairsfullName) {
-							for (JsonNode jsonNode : arrayNodecomma) {
-								if (langaueNamePairFullName.getKey().equals(jsonNode.get("language").asText().trim())) {
-									langaueNamePairFullName.setValue(langaueNamePairFullName.getValue()
-											.concat(jsonNode.get("value").asText().trim() + " "));
-									langaueNamePairFullName.setKey(jsonNode.get("language").asText().trim());
-									langaueNamePairs.add(langaueNamePairFullName);
-								}
-							}
-
-						}
-						langaueNamePairsfullName.clear();
-						for (KeyValuePairDto<String, String> keyValuePair : langaueNamePairs) {
-							langaueNamePairsfullName.add(keyValuePair);
-						}
-						langaueNamePairs.clear();
-					}
-				}
-			}
+			
+			langaueNamePairsfullName = getLangaueNamePairs(responseNode);
 
 			notificationDto.setFullName(langaueNamePairsfullName);
 			if (responseNode.get(email) != null) {
@@ -341,6 +300,61 @@ public class NotificationService {
 			throw new RestCallException(NotificationErrorCodes.PRG_PAM_ACK_011.getCode(),
 					NotificationErrorMessages.DEMOGRAPHIC_CALL_FAILED.getMessage());
 		}
+	}
+	
+	/**
+	 * This method returns langaueNamePairsfullName by concatenate firstName,lastName languagewise
+	 * 
+	 * @param responseNode JsonNode
+	 * @return langaueNamePairsfullName List<KeyValuePairDto<String, String>>
+	 */
+	private List<KeyValuePairDto<String, String>> getLangaueNamePairs(JsonNode responseNode) {
+
+		List<KeyValuePairDto<String, String>> langaueNamePairs = new ArrayList<KeyValuePairDto<String, String>>();
+		List<KeyValuePairDto<String, String>> langaueNamePairsfullName = new ArrayList<KeyValuePairDto<String, String>>();
+		KeyValuePairDto<String, String> langaueNamePair = null;
+		for (String name : fullName.split(",")) {
+
+			JsonNode arrayNodecomma = responseNode.get(name);
+
+			if (!arrayNodecomma.isEmpty() || arrayNodecomma != null) {
+
+				if (langaueNamePairsfullName.isEmpty()) {
+
+					if (!arrayNodecomma.isEmpty() || arrayNodecomma != null && arrayNodecomma.isArray()) {
+						for (JsonNode jsonNode : arrayNodecomma) {
+							langaueNamePair = new KeyValuePairDto();
+							langaueNamePair.setKey(jsonNode.get("language").asText().trim());
+							langaueNamePair.setValue(jsonNode.get("value").asText().trim() + " ");
+							langaueNamePairs.add(langaueNamePair);
+						}
+					}
+					for (KeyValuePairDto<String, String> keyValuePair : langaueNamePairs) {
+						langaueNamePairsfullName.add(keyValuePair);
+					}
+					langaueNamePairs.clear();
+
+				} else {
+					for (KeyValuePairDto<String, String> langaueNamePairFullName : langaueNamePairsfullName) {
+						for (JsonNode jsonNode : arrayNodecomma) {
+							if (langaueNamePairFullName.getKey().equals(jsonNode.get("language").asText().trim())) {
+								langaueNamePairFullName.setValue(langaueNamePairFullName.getValue()
+										.concat(jsonNode.get("value").asText().trim() + " "));
+								langaueNamePairFullName.setKey(jsonNode.get("language").asText().trim());
+								langaueNamePairs.add(langaueNamePairFullName);
+							}
+						}
+
+					}
+					langaueNamePairsfullName.clear();
+					for (KeyValuePairDto<String, String> keyValuePair : langaueNamePairs) {
+						langaueNamePairsfullName.add(keyValuePair);
+					}
+					langaueNamePairs.clear();
+				}
+			}
+		}
+		return langaueNamePairsfullName;
 	}
 
 	/**
@@ -447,19 +461,21 @@ public class NotificationService {
 			}
 			boolean isNameMatchFound = false;
 			if (!notificationDto.getIsBatch()) {
-
-				for (KeyValuePairDto<String, String> langaueNamePairFullName : notificationDto.getFullName()) {
+				List<KeyValuePairDto<String, String>> langaueNamePairsfullName = new ArrayList<KeyValuePairDto<String, String>>();
+				langaueNamePairsfullName = getLangaueNamePairs(responseNode);
+				for (KeyValuePairDto<String, String> langaueNamePairFullName : langaueNamePairsfullName) {
 					if (notificationDto.getName().trim().equals(langaueNamePairFullName.getValue().trim())) {
 						isNameMatchFound = true;
 						break;
-
 					}
+
 				}
 				if (!isNameMatchFound) {
 					throw new MandatoryFieldException(NotificationErrorCodes.PRG_PAM_ACK_008.getCode(),
 							NotificationErrorMessages.FULL_NAME_VALIDATION_EXCEPTION.getMessage(), response);
 				}
 			}
+
 		}
 		return responseEntity;
 	}
