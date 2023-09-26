@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -124,9 +125,6 @@ public class NotificationService {
 
 	@Value("${preregistration.notification.nameFormat}")
 	private String nameFormat;
-	
-	@Value("${preregistration.identity.lastName}")
-	private String lastName;
 
 	@Value("#{'${mosip.notificationtype}'.split('\\|')}")
 	private List<String> notificationTypeList;
@@ -273,20 +271,12 @@ public class NotificationService {
 					.readTree(responseEntity.getResponse().getDemographicDetails().toJSONString());
 
 			responseNode = responseNode.get(identity);
+			
+			List<KeyValuePairDto<String, String>> langaueNamePairsfullName = new ArrayList<KeyValuePairDto<String, String>>();
+			
+			langaueNamePairsfullName = getLangaueNamePairs(responseNode);
 
-			JsonNode arrayNode = responseNode.get(lastName);
-			List<KeyValuePairDto<String, String>> langaueNamePairs = new ArrayList<KeyValuePairDto<String, String>>();
-			KeyValuePairDto langaueNamePair = null;
-			if (arrayNode.isArray()) {
-				for (JsonNode jsonNode : arrayNode) {
-					langaueNamePair = new KeyValuePairDto();
-					langaueNamePair.setKey(jsonNode.get("language").asText().trim());
-					langaueNamePair.setValue(jsonNode.get("value").asText().trim());
-					langaueNamePairs.add(langaueNamePair);
-				}
-			}
-
-			notificationDto.setFullName(langaueNamePairs);
+			notificationDto.setFullName(langaueNamePairsfullName);
 			if (responseNode.get(email) != null) {
 				String emailId = responseNode.get(email).asText();
 				notificationDto.setEmailID(emailId);
@@ -310,6 +300,61 @@ public class NotificationService {
 			throw new RestCallException(NotificationErrorCodes.PRG_PAM_ACK_011.getCode(),
 					NotificationErrorMessages.DEMOGRAPHIC_CALL_FAILED.getMessage());
 		}
+	}
+	
+	/**
+	 * This method returns langaueNamePairsfullName by concatenate firstName,lastName languagewise
+	 * 
+	 * @param responseNode JsonNode
+	 * @return langaueNamePairsfullName List<KeyValuePairDto<String, String>>
+	 */
+	private List<KeyValuePairDto<String, String>> getLangaueNamePairs(JsonNode responseNode) {
+
+		List<KeyValuePairDto<String, String>> langaueNamePairs = new ArrayList<KeyValuePairDto<String, String>>();
+		List<KeyValuePairDto<String, String>> langaueNamePairsfullName = new ArrayList<KeyValuePairDto<String, String>>();
+		KeyValuePairDto<String, String> langaueNamePair = null;
+		for (String name : fullName.split(",")) {
+
+			JsonNode arrayNodecomma = responseNode.get(name);
+
+			if (!arrayNodecomma.isEmpty() || arrayNodecomma != null) {
+
+				if (langaueNamePairsfullName.isEmpty()) {
+
+					if (!arrayNodecomma.isEmpty() || arrayNodecomma != null && arrayNodecomma.isArray()) {
+						for (JsonNode jsonNode : arrayNodecomma) {
+							langaueNamePair = new KeyValuePairDto();
+							langaueNamePair.setKey(jsonNode.get("language").asText().trim());
+							langaueNamePair.setValue(jsonNode.get("value").asText().trim() + " ");
+							langaueNamePairs.add(langaueNamePair);
+						}
+					}
+					for (KeyValuePairDto<String, String> keyValuePair : langaueNamePairs) {
+						langaueNamePairsfullName.add(keyValuePair);
+					}
+					langaueNamePairs.clear();
+
+				} else {
+					for (KeyValuePairDto<String, String> langaueNamePairFullName : langaueNamePairsfullName) {
+						for (JsonNode jsonNode : arrayNodecomma) {
+							if (langaueNamePairFullName.getKey().equals(jsonNode.get("language").asText().trim())) {
+								langaueNamePairFullName.setValue(langaueNamePairFullName.getValue()
+										.concat(jsonNode.get("value").asText().trim() + " "));
+								langaueNamePairFullName.setKey(jsonNode.get("language").asText().trim());
+								langaueNamePairs.add(langaueNamePairFullName);
+							}
+						}
+
+					}
+					langaueNamePairsfullName.clear();
+					for (KeyValuePairDto<String, String> keyValuePair : langaueNamePairs) {
+						langaueNamePairsfullName.add(keyValuePair);
+					}
+					langaueNamePairs.clear();
+				}
+			}
+		}
+		return langaueNamePairsfullName;
 	}
 
 	/**
@@ -416,16 +461,12 @@ public class NotificationService {
 			}
 			boolean isNameMatchFound = false;
 			if (!notificationDto.getIsBatch()) {
-				if (lastName != null) {
-					String[] nameKeys = lastName.split(",");
-					for (int i = 0; i < nameKeys.length; i++) {
-						JsonNode arrayNode = responseNode.get(nameKeys[i]);
-						for (JsonNode jsonNode : arrayNode) {
-							if (notificationDto.getName().trim().equals(jsonNode.get("value").asText().trim())) {
-								isNameMatchFound = true;
-								break;
-							}
-						}
+				List<KeyValuePairDto<String, String>> langaueNamePairsfullName = new ArrayList<KeyValuePairDto<String, String>>();
+				langaueNamePairsfullName = getLangaueNamePairs(responseNode);
+				for (KeyValuePairDto<String, String> langaueNamePairFullName : langaueNamePairsfullName) {
+					if (notificationDto.getName().trim().equals(langaueNamePairFullName.getValue().trim())) {
+						isNameMatchFound = true;
+						break;
 					}
 
 				}
@@ -434,6 +475,7 @@ public class NotificationService {
 							NotificationErrorMessages.FULL_NAME_VALIDATION_EXCEPTION.getMessage(), response);
 				}
 			}
+
 		}
 		return responseEntity;
 	}
