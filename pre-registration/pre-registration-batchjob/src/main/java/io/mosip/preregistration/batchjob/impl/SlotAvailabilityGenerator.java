@@ -99,6 +99,7 @@ public class SlotAvailabilityGenerator {
 			long startTime = System.currentTimeMillis();
 			// identifier for debugging
 			String logIdentifier = partName + "_" + regCenter.getId() + "_" + System.currentTimeMillis();
+			LOGGER.info(PreRegBatchContants.SESSIONID, PreRegBatchContants.PRE_REG_BATCH, logIdentifier);
 			try {
 				
 				List<String> regCenterholidaysList = restHelper.getRegistrationHolidayList(regCenter.getId(), regCenter.getLangCode(), 

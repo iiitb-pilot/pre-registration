@@ -190,6 +190,8 @@ public class RestHelper {
                         filteredRegCentersList.add(regCenterDetail);
                     }
                 }
+                LOGGER.info(PreRegBatchContants.SESSIONID, PreRegBatchContants.PRE_REG_BATCH, regCentersDetailsPageNo,
+                        "No of filtered registration center " + filteredRegCentersList.size());
             }
             return filteredRegCentersList;
         } catch (Exception exp) {
