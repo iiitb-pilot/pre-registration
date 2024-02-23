@@ -1,10 +1,14 @@
 package io.mosip.preregistration.application.service;
 
 import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.Base64;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -31,6 +35,7 @@ import io.mosip.kernel.core.exception.ExceptionUtils;
 import io.mosip.kernel.core.logger.spi.Logger;
 import io.mosip.preregistration.application.code.NotificationRequestCodes;
 import io.mosip.preregistration.application.dto.NotificationResponseDTO;
+import io.mosip.preregistration.application.dto.QRCodeResponseDTO;
 import io.mosip.preregistration.application.errorcodes.NotificationErrorCodes;
 import io.mosip.preregistration.application.errorcodes.NotificationErrorMessages;
 import io.mosip.preregistration.application.exception.BookingDetailsNotFoundException;
@@ -139,7 +144,20 @@ public class NotificationService {
 
 	@Autowired
 	private ValidationUtil validationUtil;
-
+	
+	@Autowired
+	GenerateQRcodeService qrCodeGenerator;
+	
+	@Value("${mosip.pre-registration.qrcode.generate.id}")
+	private String id;
+	
+	@Value("${mosip.pre-registration.qrcode.service.version}")
+	private String qrversion;
+	
+	@Value("${mosip.utc-datetime-pattern}")
+	private String dateTimeFormat;
+	
+	
 	@PostConstruct
 	public void setupBookingService() {
 		requiredRequestMap.put("version", version);
@@ -186,7 +204,7 @@ public class NotificationService {
 					if (notificationDto.getMobNum() != null && !notificationDto.getMobNum().isEmpty()) {
 						if (validationUtil.phoneValidator(notificationDto.getMobNum())) {
 							notificationUtil.notify(NotificationRequestCodes.SMS.getCode(), notificationDto, file,
-									prid);
+									prid,null);
 						} else {
 							throw new MandatoryFieldException(NotificationErrorCodes.PRG_PAM_ACK_007.getCode(),
 									NotificationErrorMessages.PHONE_VALIDATION_EXCEPTION.getMessage(), response);
@@ -195,7 +213,7 @@ public class NotificationService {
 					if (notificationDto.getEmailID() != null && !notificationDto.getEmailID().isEmpty()) {
 						if (validationUtil.emailValidator(notificationDto.getEmailID())) {
 							notificationUtil.notify(NotificationRequestCodes.EMAIL.getCode(), notificationDto, file,
-									prid);
+									prid,null);
 						} else {
 							throw new MandatoryFieldException(NotificationErrorCodes.PRG_PAM_ACK_006.getCode(),
 									NotificationErrorMessages.EMAIL_VALIDATION_EXCEPTION.getMessage(), response);
@@ -215,7 +233,11 @@ public class NotificationService {
 					log.info("sessionId", "idType", "id",
 							"In notification service of sendNotification if additionalRecipient is"
 									+ notificationDto.isAdditionalRecipient());
-					resp = getDemographicDetailsWithPreId(demoDetail, notificationDto, langCode, file, prid);
+
+					MainResponseDTO<QRCodeResponseDTO> qrcodeResponse = generateQRCode(prid);
+					String base64Encoded = Base64.getEncoder().encodeToString(qrcodeResponse.getResponse().getQrcode());
+					resp = getDemographicDetailsWithPreId(demoDetail, notificationDto, langCode, file, prid,
+							base64Encoded);
 					notificationResponse.setMessage(resp);
 				}
 				response.setResponse(notificationResponse);
@@ -244,6 +266,53 @@ public class NotificationService {
 		}
 		return response;
 	}
+	
+	/**
+	 * Method to send request to generate QRCode.
+	 * 
+	 * @param String prid.
+	 * @return MainResponseDTO<QRCodeResponseDTO> response.
+	 */
+	public MainResponseDTO<QRCodeResponseDTO> generateQRCode(String prid) {
+
+		MainRequestDTO<String> qrcodeRequest = new MainRequestDTO<>();
+		qrcodeRequest.setId(id);
+		qrcodeRequest.setVersion(qrversion);
+		qrcodeRequest.setRequest(prid);
+		try {
+			qrcodeRequest.setRequesttime(getCurrentDateTimeFormatted());
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		MainResponseDTO<QRCodeResponseDTO> response = qrCodeGenerator.generateQRCode(qrcodeRequest);
+		return response;
+	}
+
+	/**
+	 * Method to get current date and time in given format.
+	 * 
+	 * @return Date date.
+	 */
+	public Date getCurrentDateTimeFormatted() throws Exception {
+		// Get the current date and time
+		LocalDateTime now = LocalDateTime.now();
+
+		// Define the desired date-time format
+		DateTimeFormatter formatter = DateTimeFormatter.ofPattern(dateTimeFormat);
+
+		// Format the current date and time
+		String formattedDate = now.format(formatter);
+
+		// Define the date-time format
+		SimpleDateFormat sdf = new SimpleDateFormat(dateTimeFormat);
+
+		// Parse the string to get a Date object
+		Date date = sdf.parse(formattedDate);
+
+		// Print the Date object
+		System.out.println("Parsed Date: " + date);
+		return date;
+	}
 
 	public MainResponseDTO<NotificationResponseDTO> sendNotification(String jsonString, String langCode,
 			MultipartFile file, boolean isLatest) {
@@ -261,7 +330,7 @@ public class NotificationService {
 	 * @throws IOException
 	 */
 	private String getDemographicDetailsWithPreId(MainResponseDTO<DemographicResponseDTO> responseEntity,
-			NotificationDTO notificationDto, String langCode, MultipartFile file, String prid) throws IOException {
+			NotificationDTO notificationDto, String langCode, MultipartFile file, String prid, String base64Encoded) throws IOException {
 		try {
 			ObjectMapper objectMapper = new ObjectMapper();
 			objectMapper = JsonMapper.builder().addModule(new AfterburnerModule()).build();
@@ -280,12 +349,12 @@ public class NotificationService {
 			if (responseNode.get(email) != null) {
 				String emailId = responseNode.get(email).asText();
 				notificationDto.setEmailID(emailId);
-				notificationUtil.notify(NotificationRequestCodes.EMAIL.getCode(), notificationDto, file, prid);
+				notificationUtil.notify(NotificationRequestCodes.EMAIL.getCode(), notificationDto, file, prid,base64Encoded);
 			}
 			if (responseNode.get(phone) != null) {
 				String phoneNumber = responseNode.get(phone).asText();
 				notificationDto.setMobNum(phoneNumber);
-				notificationUtil.notify(NotificationRequestCodes.SMS.getCode(), notificationDto, file, prid);
+				notificationUtil.notify(NotificationRequestCodes.SMS.getCode(), notificationDto, file, prid,null);
 
 			}
 			if (responseNode.get(email) == null && responseNode.get(phone) == null) {

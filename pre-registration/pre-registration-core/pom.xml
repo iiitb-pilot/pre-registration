@@ -23,7 +23,7 @@
 		<kernel.templatemanager.velocity.version>1.2.0.1-B1</kernel.templatemanager.velocity.version>
 		<kernel.logger.logback.version>1.2.0.1-B1</kernel.logger.logback.version>
 		<kernel.dataaccess.hibernate.version>1.2.0.1-B1</kernel.dataaccess.hibernate.version>
-
+		<kernel.qrcodegenerator.zxing.version>1.2.0.1-B1</kernel.qrcodegenerator.zxing.version>
 	</properties>
 
 	<dependencies>
@@ -53,6 +53,16 @@
 			<groupId>io.mosip.kernel</groupId>
 			<artifactId>kernel-core</artifactId>
 			<version>${kernel.core.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.mosip.kernel</groupId>
+			<artifactId>kernel-qrcodegenerator-zxing</artifactId>
+			<version>${kernel.qrcodegenerator.zxing.version}</version>
+		</dependency>
+		<dependency>
+   			 <groupId>com.itextpdf</groupId>
+    		<artifactId>itextpdf</artifactId>
+   			 <version>5.5.12</version>
 		</dependency>
 		<dependency>
 			<groupId>io.mosip.kernel</groupId>
@@ -143,6 +153,5 @@
 			<artifactId>commons-collections4</artifactId>
 			<version>${commons-collections4.version}</version>
 		</dependency>
-		
 	</dependencies>
 </project>

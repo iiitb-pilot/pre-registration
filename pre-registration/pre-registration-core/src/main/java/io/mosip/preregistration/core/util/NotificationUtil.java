@@ -1,5 +1,6 @@
 package io.mosip.preregistration.core.util;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Date;
 
@@ -8,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -19,6 +21,16 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
+
+import com.google.zxing.BarcodeFormat;
+import com.google.zxing.WriterException;
+import com.google.zxing.client.j2se.MatrixToImageWriter;
+import com.google.zxing.common.BitMatrix;
+import com.google.zxing.qrcode.QRCodeWriter;
+import com.itextpdf.text.Document;
+import com.itextpdf.text.DocumentException;
+import com.itextpdf.text.Image;
+import com.itextpdf.text.pdf.PdfWriter;
 
 import io.mosip.kernel.core.logger.spi.Logger;
 import io.mosip.kernel.core.util.DateUtils;
@@ -85,9 +97,9 @@ public class NotificationUtil {
 
 	@Value("${mosip.utc-datetime-pattern}")
 	private String dateTimeFormat;
-
+	
 	public MainResponseDTO<NotificationResponseDTO> notify(String notificationType, NotificationDTO acknowledgementDTO,
-			MultipartFile file, String prid) throws IOException {
+			MultipartFile file, String prid,String base64Encoded) throws IOException {
 
 		log.info("sessionId", "idType", "id", "In notify method of NotificationUtil service:" + notificationType);
 
@@ -104,7 +116,7 @@ public class NotificationUtil {
 				response = smsNotification(acknowledgementDTO, prid);
 			}
 			if (notificationType.equals(RequestCodes.EMAIL)) {
-				response = emailNotification(acknowledgementDTO, file, prid);
+				response = emailNotification(acknowledgementDTO, file, prid,base64Encoded);
 			}
 		}
 
@@ -113,7 +125,7 @@ public class NotificationUtil {
 	public MainResponseDTO<NotificationResponseDTO> notify(String notificationType, NotificationDTO acknowledgementDTO,
 			MultipartFile file) throws IOException {
 				
-		return notify(notificationType,acknowledgementDTO,file,null) ;
+		return notify(notificationType,acknowledgementDTO,file,null,null) ;
 		
 	}
 
@@ -126,7 +138,7 @@ public class NotificationUtil {
 	 * @throws IOException
 	 */
 	public MainResponseDTO<NotificationResponseDTO> emailNotification(NotificationDTO acknowledgementDTO,
-			MultipartFile file, String prid) throws IOException {
+			MultipartFile file, String prid,String base64Encoded) throws IOException {
 		log.info("sessionId", "idType", "id", "In emailNotification method of NotificationUtil service");
 		HttpEntity<byte[]> doc = null;
 		String fileText = null;
@@ -137,7 +149,6 @@ public class NotificationUtil {
 			pdfHeaderMap.add("Content-type", "text/plain");
 			doc = new HttpEntity<>(file.getBytes(), pdfHeaderMap);
 		}
-
 		ResponseEntity<ResponseWrapper<NotificationResponseDTO>> resp = null;
 		MainResponseDTO<NotificationResponseDTO> response = new MainResponseDTO<>();
 		String mergeTemplate = null;
@@ -151,7 +162,8 @@ public class NotificationUtil {
 //				fileText.concat(System.lineSeparator() + System.lineSeparator());
 				}
 			} else {
-				fileText = templateUtil.getTemplate(keyValuePair.getKey(), preBookingEmailAcknowledgement);
+//			
+					fileText = templateUtil.getTemplate(keyValuePair.getKey(), preBookingEmailAcknowledgement);
 			}
 
 			String languageWiseTemplate = templateUtil.templateMerge(fileText, acknowledgementDTO,
@@ -166,8 +178,23 @@ public class NotificationUtil {
 		HttpHeaders headers = new HttpHeaders();
 		headers.setContentType(MediaType.MULTIPART_FORM_DATA);
 		MultiValueMap<Object, Object> emailMap = new LinkedMultiValueMap<>();
-		emailMap.add("attachments", doc);
-		emailMap.add("mailContent", mergeTemplate);
+		
+		if (prid == null) {
+			emailMap.add("attachments", doc);
+			emailMap.add("mailContent", mergeTemplate);
+		} else {
+
+			MultipartFile qrcodefile = generateQRCodeMultipartFile(base64Encoded,prid);
+			LinkedMultiValueMap<String, String> pdfHeaderMap = new LinkedMultiValueMap<>();
+		//	pdfHeaderMap.add("Content-type", "image/png");
+			pdfHeaderMap.add("Content-disposition",
+					"form-data; name=attachments; filename=" + qrcodefile.getOriginalFilename());
+			pdfHeaderMap.add("Content-type", "text/plain"); 
+			doc = new HttpEntity<>(qrcodefile.getBytes(), pdfHeaderMap);
+			emailMap.add("attachments", doc);
+			emailMap.add("mailContent", mergeTemplate);
+
+		}
 		if (prid == null) {
 			if (acknowledgementDTO.getIsBatch() && cancelAppointmentEmailSubject != null) {
 				emailMap.add("mailSubject", getCancelAppointmentEmailSubject(acknowledgementDTO));
@@ -199,9 +226,42 @@ public class NotificationUtil {
 		return response;
 	}
 	
+	/**
+	 * This method will return MultipartFIle
+	 * 
+	 * @param base64EncodedString
+	 * @return MultipartFile
+	 * @throws IOException
+	 */
+	public MultipartFile generateQRCodeMultipartFile(String base64EncodedString, String prid) throws IOException{
+		ByteArrayResource resource = null;
+		try {
+			Document document = new Document();
+			ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+			PdfWriter.getInstance(document, outputStream);
+			document.open();
+			QRCodeWriter qrCodeWriter = new QRCodeWriter();
+			BitMatrix bitMatrix = qrCodeWriter.encode(base64EncodedString, BarcodeFormat.QR_CODE, 300, 300);
+			Image qrCodeImage = Image.getInstance(MatrixToImageWriter.toBufferedImage(bitMatrix), null);
+			document.add(qrCodeImage);
+			document.close();
+			// Convert ByteArrayOutputStream to byte array
+			byte[] bytes = outputStream.toByteArray();
+			// Create a MultipartFile from the byte array
+			resource = new ByteArrayResource(bytes);
+
+		} catch (DocumentException | WriterException | IOException ex) {
+
+			log.error(ExceptionUtils.getStackTrace(ex));
+			log.error("In notification util of sendNotification " + ex.getMessage());
+		}
+
+		return new CustomMultipartFile("file", prid + ".pdf", "application/pdf", resource);
+
+	}
 	public MainResponseDTO<NotificationResponseDTO> emailNotification(NotificationDTO acknowledgementDTO,
 			MultipartFile file) throws IOException {
-				return emailNotification(acknowledgementDTO, file, null);
+				return emailNotification(acknowledgementDTO, file, null,null);
 		
 	}
 
