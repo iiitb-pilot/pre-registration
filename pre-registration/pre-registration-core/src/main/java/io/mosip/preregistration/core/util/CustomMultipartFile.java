@@ -20,44 +20,44 @@ public class CustomMultipartFile implements MultipartFile {
         this.resource = resource;
     }
 
-    @Override
+   
     public String getName() {
         return name;
     }
 
-    @Override
+    
     public String getOriginalFilename() {
         return originalFilename;
     }
 
-    @Override
+    
     public String getContentType() {
         return contentType;
     }
 
-    @Override
+   
     public boolean isEmpty() {
         return resource.contentLength() == 0;
     }
 
-    @Override
+   
     public long getSize() {
         return resource.contentLength();
     }
 
-    @Override
+   
     public byte[] getBytes() throws IOException {
         return resource.getInputStream().readAllBytes();
     }
 
-    @Override
+  
     public InputStream getInputStream() throws IOException {
     	
        return resource.getInputStream();
 
     }
 
-    @Override
+
     public void transferTo(File dest) throws IOException, IllegalStateException {
         throw new UnsupportedOperationException("Not implemented");
     }

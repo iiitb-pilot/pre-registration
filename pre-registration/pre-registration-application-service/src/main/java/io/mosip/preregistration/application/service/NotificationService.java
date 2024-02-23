@@ -233,11 +233,15 @@ public class NotificationService {
 					log.info("sessionId", "idType", "id",
 							"In notification service of sendNotification if additionalRecipient is"
 									+ notificationDto.isAdditionalRecipient());
-
-					MainResponseDTO<QRCodeResponseDTO> qrcodeResponse = generateQRCode(prid);
-					String base64Encoded = Base64.getEncoder().encodeToString(qrcodeResponse.getResponse().getQrcode());
-					resp = getDemographicDetailsWithPreId(demoDetail, notificationDto, langCode, file, prid,
-							base64Encoded);
+					if (prid != null) {
+						MainResponseDTO<QRCodeResponseDTO> qrcodeResponse = generateQRCode(prid);
+						String base64Encoded = Base64.getEncoder()
+								.encodeToString(qrcodeResponse.getResponse().getQrcode());
+						resp = getDemographicDetailsWithPreId(demoDetail, notificationDto, langCode, file, prid,
+								base64Encoded);
+					} else {
+						resp = getDemographicDetailsWithPreId(demoDetail, notificationDto, langCode, file, prid, null);
+					}
 					notificationResponse.setMessage(resp);
 				}
 				response.setResponse(notificationResponse);
