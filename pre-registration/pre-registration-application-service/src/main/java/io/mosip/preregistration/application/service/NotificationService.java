@@ -235,10 +235,9 @@ public class NotificationService {
 									+ notificationDto.isAdditionalRecipient());
 					if (prid != null) {
 						MainResponseDTO<QRCodeResponseDTO> qrcodeResponse = generateQRCode(prid);
-						String base64Encoded = Base64.getEncoder()
-								.encodeToString(qrcodeResponse.getResponse().getQrcode());
+						byte[] bytes = qrcodeResponse.getResponse().getQrcode();
 						resp = getDemographicDetailsWithPreId(demoDetail, notificationDto, langCode, file, prid,
-								base64Encoded);
+								bytes);
 					} else {
 						resp = getDemographicDetailsWithPreId(demoDetail, notificationDto, langCode, file, prid, null);
 					}
@@ -334,7 +333,7 @@ public class NotificationService {
 	 * @throws IOException
 	 */
 	private String getDemographicDetailsWithPreId(MainResponseDTO<DemographicResponseDTO> responseEntity,
-			NotificationDTO notificationDto, String langCode, MultipartFile file, String prid, String base64Encoded) throws IOException {
+			NotificationDTO notificationDto, String langCode, MultipartFile file, String prid, byte[] bytes) throws IOException {
 		try {
 			ObjectMapper objectMapper = new ObjectMapper();
 			objectMapper = JsonMapper.builder().addModule(new AfterburnerModule()).build();
@@ -353,7 +352,7 @@ public class NotificationService {
 			if (responseNode.get(email) != null) {
 				String emailId = responseNode.get(email).asText();
 				notificationDto.setEmailID(emailId);
-				notificationUtil.notify(NotificationRequestCodes.EMAIL.getCode(), notificationDto, file, prid,base64Encoded);
+				notificationUtil.notify(NotificationRequestCodes.EMAIL.getCode(), notificationDto, file, prid,bytes);
 			}
 			if (responseNode.get(phone) != null) {
 				String phoneNumber = responseNode.get(phone).asText();
