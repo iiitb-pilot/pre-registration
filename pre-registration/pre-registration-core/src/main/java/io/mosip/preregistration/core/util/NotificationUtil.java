@@ -22,14 +22,10 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.google.zxing.BarcodeFormat;
-import com.google.zxing.WriterException;
-import com.google.zxing.client.j2se.MatrixToImageWriter;
-import com.google.zxing.common.BitMatrix;
-import com.google.zxing.qrcode.QRCodeWriter;
 import com.itextpdf.text.Document;
 import com.itextpdf.text.DocumentException;
 import com.itextpdf.text.Image;
+import com.itextpdf.text.PageSize;
 import com.itextpdf.text.pdf.PdfWriter;
 
 import io.mosip.kernel.core.logger.spi.Logger;
@@ -97,9 +93,9 @@ public class NotificationUtil {
 
 	@Value("${mosip.utc-datetime-pattern}")
 	private String dateTimeFormat;
-	
+
 	public MainResponseDTO<NotificationResponseDTO> notify(String notificationType, NotificationDTO acknowledgementDTO,
-			MultipartFile file, String prid,String base64Encoded) throws IOException {
+			MultipartFile file, String prid,byte[] bytes) throws IOException {
 
 		log.info("sessionId", "idType", "id", "In notify method of NotificationUtil service:" + notificationType);
 
@@ -116,7 +112,7 @@ public class NotificationUtil {
 				response = smsNotification(acknowledgementDTO, prid);
 			}
 			if (notificationType.equals(RequestCodes.EMAIL)) {
-				response = emailNotification(acknowledgementDTO, file, prid,base64Encoded);
+				response = emailNotification(acknowledgementDTO, file, prid,bytes);
 			}
 		}
 
@@ -138,7 +134,7 @@ public class NotificationUtil {
 	 * @throws IOException
 	 */
 	public MainResponseDTO<NotificationResponseDTO> emailNotification(NotificationDTO acknowledgementDTO,
-			MultipartFile file, String prid,String base64Encoded) throws IOException {
+			MultipartFile file, String prid,byte[] bytes) throws IOException {
 		log.info("sessionId", "idType", "id", "In emailNotification method of NotificationUtil service");
 		HttpEntity<byte[]> doc = null;
 		String fileText = null;
@@ -184,7 +180,7 @@ public class NotificationUtil {
 			emailMap.add("mailContent", mergeTemplate);
 		} else {
 
-			MultipartFile qrcodefile = generateQRCodeMultipartFile(base64Encoded,prid);
+			MultipartFile qrcodefile = generateQRCodeMultipartFile(bytes,prid);
 			LinkedMultiValueMap<String, String> pdfHeaderMap = new LinkedMultiValueMap<>();
 		//	pdfHeaderMap.add("Content-type", "image/png");
 			pdfHeaderMap.add("Content-disposition",
@@ -232,30 +228,33 @@ public class NotificationUtil {
 	 * @param base64EncodedString
 	 * @return MultipartFile
 	 * @throws IOException
+	 * @throws DocumentException 
 	 */
-	public MultipartFile generateQRCodeMultipartFile(String base64EncodedString, String prid) throws IOException{
+	public MultipartFile generateQRCodeMultipartFile(byte[] qrcodebytes, String prid){
 		ByteArrayResource resource = null;
 		try {
-			Document document = new Document();
+			Document document = new Document(PageSize.A4);
 			ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
 			PdfWriter.getInstance(document, outputStream);
 			document.open();
-			QRCodeWriter qrCodeWriter = new QRCodeWriter();
-			BitMatrix bitMatrix = qrCodeWriter.encode(base64EncodedString, BarcodeFormat.QR_CODE, 300, 300);
-			Image qrCodeImage = Image.getInstance(MatrixToImageWriter.toBufferedImage(bitMatrix), null);
+			Image qrCodeImage = Image.getInstance(qrcodebytes);
+			qrCodeImage.scaleAbsolute(200, 200);
+			
+			float x = (PageSize.A4.getWidth() - qrCodeImage.getScaledWidth()) / 2;
+            float y = (PageSize.A4.getHeight() - qrCodeImage.getScaledHeight()) / 2;
+            qrCodeImage.setAbsolutePosition(x, y);
+
 			document.add(qrCodeImage);
 			document.close();
 			// Convert ByteArrayOutputStream to byte array
 			byte[] bytes = outputStream.toByteArray();
 			// Create a MultipartFile from the byte array
 			resource = new ByteArrayResource(bytes);
-
-		} catch (DocumentException | WriterException | IOException ex) {
+		} catch (DocumentException | IOException ex) {
 
 			log.error(ExceptionUtils.getStackTrace(ex));
 			log.error("In notification util of sendNotification " + ex.getMessage());
 		}
-
 		return new CustomMultipartFile("file", prid + ".pdf", "application/pdf", resource);
 
 	}
