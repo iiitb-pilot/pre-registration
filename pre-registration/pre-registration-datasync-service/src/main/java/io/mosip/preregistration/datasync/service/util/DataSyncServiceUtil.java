@@ -177,6 +177,13 @@ public class DataSyncServiceUtil {
 	private String podUrl;
 
 	/**
+	 * Reference for ${pop.url} from property file
+	 */
+	@Value("${pop.url}")
+	private String popUrl;
+
+
+	/**
 	 * Reference for ${booking.resource.url} from property file
 	 */
 	@Value("${booking.resource.url}")
@@ -616,6 +623,8 @@ public class DataSyncServiceUtil {
 					jsonObject.put(poiUrl, prepareDocumentMetaData(documentMultipartResponseDTO));
 				} else if (documentMultipartResponseDTO.getDocCatCode().equals(RequestCodes.POR.getCode())) {
 					jsonObject.put(porUrl, prepareDocumentMetaData(documentMultipartResponseDTO));
+				} else if (documentMultipartResponseDTO.getDocCatCode().equals(RequestCodes.POP.getCode())) {
+					jsonObject.put(popUrl, prepareDocumentMetaData(documentMultipartResponseDTO));
 				} else if (documentMultipartResponseDTO.getDocCatCode().equals(RequestCodes.POD.getCode())
 						|| documentMultipartResponseDTO.getDocCatCode().equals(RequestCodes.POB.getCode())) {
 					jsonObject.put(podUrl, prepareDocumentMetaData(documentMultipartResponseDTO));

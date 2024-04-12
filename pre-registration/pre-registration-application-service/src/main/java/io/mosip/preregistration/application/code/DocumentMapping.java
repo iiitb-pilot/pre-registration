@@ -12,7 +12,9 @@ public enum DocumentMapping {
 
 	POR("proofOfRelationship", "POR"),
 
-	POE("proofOfException", "POE");
+	POE("proofOfException", "POE"),
+
+	POP("proofOfPhoto", "POP");
 
 	private final String attributeName;
 
