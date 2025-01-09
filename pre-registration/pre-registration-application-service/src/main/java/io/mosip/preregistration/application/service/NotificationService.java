@@ -385,11 +385,12 @@ public class NotificationService {
 		List<KeyValuePairDto<String, String>> langaueNamePairs = new ArrayList<KeyValuePairDto<String, String>>();
 		List<KeyValuePairDto<String, String>> langaueNamePairsfullName = new ArrayList<KeyValuePairDto<String, String>>();
 		KeyValuePairDto<String, String> langaueNamePair = null;
+
 		for (String name : fullName.split(",")) {
 
 			JsonNode arrayNodecomma = responseNode.get(name);
 
-			if (!arrayNodecomma.isEmpty() || arrayNodecomma != null) {
+				if (arrayNodecomma != null && !arrayNodecomma.isEmpty()) {
 
 				if (langaueNamePairsfullName.isEmpty()) {
 
