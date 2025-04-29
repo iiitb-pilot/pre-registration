@@ -18,6 +18,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.env.Environment;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -27,6 +28,8 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.*;
 import springfox.documentation.annotations.ApiIgnore;
+
+import java.util.List;
 
 /**
  * This class provides different API's to perform operations on
@@ -47,6 +50,13 @@ public class TransliterationController {
 	
 	@Autowired
 	private RequestValidator requestValidator;
+
+	@Autowired
+	private Environment environment;
+
+
+	private static final String PREREG_TRANSLITERATION_WORKAROUND_PROPERTY = "pre-reg-transliteration-workaround-for-%s-%s";
+	private static final int LANGUAGE_LIST_SIZE = 2;
 	
 	/** The Constant for GET UPDATED DATE TIME application. */
 	private static final String TRANS = "pre-registration.transliteration.transliterate";
@@ -78,7 +88,43 @@ public class TransliterationController {
 	public ResponseEntity<MainResponseDTO<TransliterationResponseDTO>> translitrator(
 			@Validated @RequestBody(required = true) MainRequestDTO<TransliterationRequestDTO> requestDTO, @ApiIgnore Errors errors) {
 		requestValidator.validateId(TRANS, requestDTO.getId(), errors);
-		DataValidationUtil.validate(errors,TRANS);
-		return ResponseEntity.status(HttpStatus.OK).body(transliterationService.translitratorService(requestDTO));
+		DataValidationUtil.validate(errors, TRANS);
+
+		String propertyValue = environment.getProperty(String.format(PREREG_TRANSLITERATION_WORKAROUND_PROPERTY,
+				requestDTO.getRequest().getFromFieldLang(), requestDTO.getRequest().getToFieldLang()));
+		if (propertyValue != null) {
+			List<String> propertyValueList = List.of(propertyValue.split(","));
+			MainResponseDTO<TransliterationResponseDTO> responseDTO = null;
+			for (String languagePair : propertyValueList) {
+				MainRequestDTO<TransliterationRequestDTO> transliterationRequestDTOMainRequestDTO = new MainRequestDTO<>();
+				TransliterationRequestDTO transliterationRequestDTO = new TransliterationRequestDTO();
+				List<String> languageList = List.of(languagePair.split("-"));
+				if (languageList.size() == LANGUAGE_LIST_SIZE) {
+					transliterationRequestDTO.setFromFieldLang(languageList.get(0));
+					transliterationRequestDTO.setToFieldLang(languageList.get(1));
+					if (responseDTO != null) {
+						transliterationRequestDTO.setFromFieldValue(responseDTO.getResponse().getToFieldValue());
+					} else {
+						transliterationRequestDTO.setFromFieldValue(requestDTO.getRequest().getFromFieldValue());
+					}
+					transliterationRequestDTOMainRequestDTO.setRequest(transliterationRequestDTO);
+					transliterationRequestDTOMainRequestDTO.setId(requestDTO.getId());
+					transliterationRequestDTOMainRequestDTO.setVersion(requestDTO.getVersion());
+					transliterationRequestDTOMainRequestDTO.setRequesttime(requestDTO.getRequesttime());
+					responseDTO = transliterationService.translitratorService(transliterationRequestDTOMainRequestDTO);
+				}
+			}
+			if (responseDTO != null && responseDTO.getResponse() != null) {
+				TransliterationResponseDTO transliterationResponseDTO = responseDTO.getResponse();
+				transliterationResponseDTO.setToFieldLang(requestDTO.getRequest().getToFieldLang());
+				transliterationResponseDTO.setFromFieldValue(requestDTO.getRequest().getFromFieldValue());
+				transliterationResponseDTO.setFromFieldLang(requestDTO.getRequest().getFromFieldLang());
+				responseDTO.setResponse(transliterationResponseDTO);
+			}
+			return ResponseEntity.status(HttpStatus.OK).body(responseDTO);
+
+		} else {
+			return ResponseEntity.status(HttpStatus.OK).body(transliterationService.translitratorService(requestDTO));
+		}
 	}
 }
