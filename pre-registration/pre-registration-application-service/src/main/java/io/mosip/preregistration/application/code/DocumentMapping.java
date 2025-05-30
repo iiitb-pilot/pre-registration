@@ -14,7 +14,9 @@ public enum DocumentMapping {
 
 	POE("proofOfException", "POE"),
 
-	POP("proofOfPhoto", "POP");
+	POP("proofOfPhoto", "POP"),
+
+	POC("proofOfConsent", "POC");
 
 	private final String attributeName;
 
