@@ -204,6 +204,8 @@ public class DemographicService implements DemographicServiceIntf {
 	@Value("${mosip.preregistration.demographic.id.retrieve.date}")
 	private String dateId;
 
+	@Value("${notification.demographic.submission.qrcode.enabled}")
+	private boolean demographicQrAckEnabled;
 	/**
 	 * Reference for ${ver} from property file
 	 */
@@ -354,7 +356,9 @@ public class DemographicService implements DemographicServiceIntf {
 					"Pre Registration end time : " + DateUtils.getUTCCurrentDateTimeString());
 			request.setId(preRegistrationNotificationId);
 			String jsonString = objectMapper.writeValueAsString(request);
-			notificationService.sendNotification(jsonString, request.getRequest().getLangCode(), null, false, preId);
+			if(demographicQrAckEnabled) {
+				notificationService.sendNotification(jsonString, request.getRequest().getLangCode(), null, false, preId);
+			}
 		} catch (HttpServerErrorException | HttpClientErrorException e) {
 			log.error("sessionId", "idType", "id", ExceptionUtils.getStackTrace(e));
 			log.error("sessionId", "idType", "id",
