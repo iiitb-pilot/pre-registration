@@ -356,6 +356,7 @@ public class DemographicService implements DemographicServiceIntf {
 					"Pre Registration end time : " + DateUtils.getUTCCurrentDateTimeString());
 			request.setId(preRegistrationNotificationId);
 			String jsonString = objectMapper.writeValueAsString(request);
+			log.info("demographicQrAckEnabled value : {}", demographicQrAckEnabled);
 			if(demographicQrAckEnabled) {
 				notificationService.sendNotification(jsonString, request.getRequest().getLangCode(), null, false, preId);
 			}
