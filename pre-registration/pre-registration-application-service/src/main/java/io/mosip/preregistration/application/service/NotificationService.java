@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import org.json.JSONException;
 import org.json.simple.parser.ParseException;
@@ -172,8 +173,9 @@ public class NotificationService {
 		response = new MainResponseDTO<>();
 
 		NotificationResponseDTO notificationResponse = new NotificationResponseDTO();
-		log.info(LOGGER_SESSIONID, LOGGER_IDTYPE, LOGGER_ID, "In notification service of sendNotification with request  " + jsonString
-				+ " and langCode " + langCode);
+		log.info(LOGGER_SESSIONID, LOGGER_IDTYPE, LOGGER_ID,
+				"In notification service of sendNotification with request  " + jsonString + " and langCode "
+						+ langCode);
 		requiredRequestMap.put("id", Id);
 		response.setId(Id);
 		response.setVersion(version);
@@ -187,9 +189,11 @@ public class NotificationService {
 			NotificationDTO notificationDto = notificationReqDTO.getRequest();
 			if (validationUtil.requestValidator(validationUtil.prepareRequestMap(notificationReqDTO),
 					requiredRequestMap)) {
-				MainResponseDTO<ApplicationEntity> appEntity = applicationServiceIntf.getApplicationInfo(notificationDto.getPreRegistrationId());
+				MainResponseDTO<ApplicationEntity> appEntity = applicationServiceIntf
+						.getApplicationInfo(notificationDto.getPreRegistrationId());
 				String bookingType = appEntity.getResponse().getBookingType();
-				MainResponseDTO<DemographicResponseDTO> demoDetail = notificationDtoValidation(bookingType, notificationDto);
+				MainResponseDTO<DemographicResponseDTO> demoDetail = notificationDtoValidation(bookingType,
+						notificationDto);
 				if (notificationDto.isAdditionalRecipient()) {
 					log.info(LOGGER_SESSIONID, LOGGER_IDTYPE, LOGGER_ID,
 							"In notification service of sendNotification if additionalRecipient is"
@@ -226,7 +230,8 @@ public class NotificationService {
 					log.info(LOGGER_SESSIONID, LOGGER_IDTYPE, LOGGER_ID,
 							"In notification service of sendNotification if additionalRecipient is"
 									+ notificationDto.isAdditionalRecipient());
-					resp = getDemographicDetailsWithPreId(bookingType, demoDetail, appEntity, notificationDto, langCode, file);
+					resp = getDemographicDetailsWithPreId(bookingType, demoDetail, appEntity, notificationDto, langCode,
+							file);
 					notificationResponse.setMessage(resp);
 				}
 			}
@@ -238,7 +243,8 @@ public class NotificationService {
 				| io.mosip.kernel.core.util.exception.JsonMappingException | io.mosip.kernel.core.exception.IOException
 				| JSONException | java.text.ParseException ex) {
 			log.error(LOGGER_SESSIONID, LOGGER_IDTYPE, LOGGER_ID, ExceptionUtils.getStackTrace(ex));
-			log.error(LOGGER_SESSIONID, LOGGER_IDTYPE, LOGGER_ID, "In notification service of sendNotification " + ex.getMessage());
+			log.error(LOGGER_SESSIONID, LOGGER_IDTYPE, LOGGER_ID,
+					"In notification service of sendNotification " + ex.getMessage());
 			new NotificationExceptionCatcher().handle(ex, response);
 		} finally {
 			response.setResponsetime(validationUtil.getCurrentResponseTime());
@@ -279,20 +285,38 @@ public class NotificationService {
 
 				JsonNode responseNode = objectMapper
 						.readTree(responseEntity.getResponse().getDemographicDetails().toJSONString());
-
 				responseNode = responseNode.get(identity);
 
-				JsonNode arrayNode = responseNode.get(fullName);
-				KeyValuePairDto langaueNamePair = null;
-				if (arrayNode.isArray()) {
-					for (JsonNode jsonNode : arrayNode) {
-						langaueNamePair = new KeyValuePairDto();
-						langaueNamePair.setKey(jsonNode.get("language").asText().trim());
-						langaueNamePair.setValue(jsonNode.get("value").asText().trim());
-						langaueNamePairs.add(langaueNamePair);
-					}
+				Map<String, StringBuilder> nameByLang = new HashMap<>();
+				for (String key : nameFormat.split(",")) {
+				    JsonNode arr = responseNode.get(key.trim());
+				    if (arr == null || !arr.isArray()) {
+				        continue;
+				    }
+				    for (JsonNode node : arr) {
+				        JsonNode languageNode = node.get("language");
+				        JsonNode valueNode = node.get("value");
+
+				        if (languageNode == null || valueNode == null) {
+				            continue;
+				        }
+
+				        nameByLang.computeIfAbsent(
+				                languageNode.asText().trim(),
+				                k -> new StringBuilder())
+				                .append(valueNode.asText().trim())
+				                .append(" ");
+				    }
+				}
+				for (Map.Entry<String, StringBuilder> entry : nameByLang.entrySet()) {
+				    KeyValuePairDto<String, String> languageNamePair = new KeyValuePairDto<>();
+
+				    languageNamePair.setKey(entry.getKey());
+				    languageNamePair.setValue(entry.getValue().toString().trim());
+				    langaueNamePairs.add(languageNamePair);
 				}
 				notificationDto.setFullName(langaueNamePairs);
+
 				if (responseNode.get(email) != null) {
 					String emailId = responseNode.get(email).asText();
 					notificationDto.setEmailID(emailId);
@@ -463,23 +487,25 @@ public class NotificationService {
 		}
 		boolean isNameMatchFound = false;
 		if (!notificationDto.getIsBatch()) {
-			if (nameFormat != null) {
-				String[] nameKeys = nameFormat.split(",");
-				for (int i = 0; i < nameKeys.length; i++) {
-					JsonNode arrayNode = responseNode.get(nameKeys[i]);
-					for (JsonNode jsonNode : arrayNode) {
-						if (notificationDto.getName().trim().equals(jsonNode.get("value").asText().trim())) {
-							isNameMatchFound = true;
-							break;
-						}
-					}
-				}
-
-			}
-			if (!isNameMatchFound) {
-				throw new MandatoryFieldException(NotificationErrorCodes.PRG_PAM_ACK_008.getCode(),
-						NotificationErrorMessages.FULL_NAME_VALIDATION_EXCEPTION.getMessage(), response);
-			}
+		    if (nameFormat != null) {
+		        Map<String, StringBuilder> nameByLang = new HashMap<>();
+		        for (String key : nameFormat.split(",")) {
+		            JsonNode arr = responseNode.get(key.trim());
+		            if (arr == null) continue;
+		            for (JsonNode node : arr) {
+		                nameByLang.computeIfAbsent(node.get("language").asText(), k -> new StringBuilder())
+		                          .append(node.get("value").asText().trim()).append(' ');
+		            }
+		        }
+		        String requestedName = Optional.ofNullable(notificationDto.getName()).map(String::trim).orElse("");
+		        
+		        isNameMatchFound = nameByLang.values().stream()
+		                .anyMatch(sb -> sb.toString().trim().equalsIgnoreCase(requestedName));
+		    }
+		    if (!isNameMatchFound) {
+		        throw new MandatoryFieldException(NotificationErrorCodes.PRG_PAM_ACK_008.getCode(),
+		                NotificationErrorMessages.FULL_NAME_VALIDATION_EXCEPTION.getMessage(), response);
+		    }
 		}
 		return responseEntity;
 	}
