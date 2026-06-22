@@ -86,13 +86,13 @@ public class NotificationUtil {
 
 		log.info(LOGGER_SESSIONID, LOGGER_IDTYPE, LOGGER_ID,
 				"In notify method of NotificationUtil service:" + notificationType);
-
+		
 		MainResponseDTO<NotificationResponseDTO> response = new MainResponseDTO<>();
 		if (notificationType.equals(RequestCodes.SMS)) {
 			response = smsNotification(bookingType, acknowledgementDTO);
 		}
 		if (notificationType.equals(RequestCodes.EMAIL)) {
-			response = emailNotification(bookingType, acknowledgementDTO, null);
+			response = emailNotification(bookingType, acknowledgementDTO, file);
 		}
 
 		return response;
