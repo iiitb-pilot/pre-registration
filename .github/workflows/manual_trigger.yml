@@ -11,7 +11,7 @@ on:
 
 jobs:
   build-maven-pre-registration:
-    uses: iiitb-pilot/kattu/.github/workflows/maven-build.yml@master-java
+    uses: iiitb-pilot/kattu/.github/workflows/maven-build.yml@master
     with:
       SERVICE_LOCATION: ./pre-registration
       BUILD_ARTIFACT: pre-registration
@@ -32,7 +32,7 @@ jobs:
             BUILD_ARTIFACT: 'pre-registration'
       fail-fast: false
     name: ${{ matrix.SERVICE_NAME }}
-    uses: iiitb-pilot/kattu/.github/workflows/docker-build.yml@master-java
+    uses: iiitb-pilot/kattu/.github/workflows/docker-build.yml@master
     with:
       SERVICE_LOCATION: ${{ matrix.SERVICE_LOCATION }}
       SERVICE_NAME: ${{ matrix.SERVICE_NAME }}
