@@ -202,12 +202,14 @@ public class OTPManager {
 		} catch (PreRegLoginException e) {
 			logger.error(PreRegLoginConstant.SESSION_ID, this.getClass().getSimpleName(), "generateOTP",
 					e.getMessage());
+            logger.error(PreRegLoginErrorConstants.UNABLE_TO_PROCESS.getErrorCode(), e);
 			throw new PreRegLoginException(PreRegLoginErrorConstants.UNABLE_TO_PROCESS.getErrorCode(),
 					PreRegLoginErrorConstants.UNABLE_TO_PROCESS.getErrorMessage());
 		} catch (Exception e) {
 			logger.error(PreRegLoginConstant.SESSION_ID, this.getClass().getSimpleName(),
 					PreRegLoginErrorConstants.SERVER_ERROR.getErrorCode(),
 					PreRegLoginErrorConstants.SERVER_ERROR.getErrorMessage());
+            logger.error(PreRegLoginErrorConstants.SERVER_ERROR.getErrorCode(), e);
 			throw new PreRegLoginException(PreRegLoginErrorConstants.SERVER_ERROR.getErrorCode(),
 					PreRegLoginErrorConstants.SERVER_ERROR.getErrorMessage());
 		}
